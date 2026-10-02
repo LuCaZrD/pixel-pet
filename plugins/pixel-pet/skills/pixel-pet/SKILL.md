@@ -96,7 +96,9 @@ Example, a front-facing cat ([`assets/duck.json`](../../assets/duck.json) is a s
 
 ## 4. Preview it
 
-Call `preview_theme` before every `set_theme`, and skip it only when the user asks to skip it. Pass `theme` and an absolute `path` in the temp folder, such as `/tmp/cat.theme.html`.
+Preview every theme you drew or changed: the user has not seen it yet. A ready-made theme the user named as is (a theme file, a repo's `assets/alien.json`, the slime back) is already chosen: go to [step 6](#6-put-it-on-screen) and pass it as `theme`. Skip the preview of your own changes only when the user asks.
+
+Call `preview_theme` with `theme` and an absolute `path` in the temp folder, such as `/tmp/cat.theme.html`.
 
 - A theme with no sprite is refused. Add a sprite and call again.
 - Any other theme draws. The result gives the resting frame (`@` is a pupil, `*` a cheek) and notes.
@@ -105,9 +107,9 @@ Call `preview_theme` before every `set_theme`, and skip it only when the user as
 
 Open the page: `open <path>` on macOS, `xdg-open <path>` on Linux, `start <path>` on Windows. Tell the user the page shows each mode in motion with its props, every face, each mode's status lines in their colors, the HUD in two sample states, and the frames, and that its button shows the pet on a light terminal.
 
-When the page cannot open (a remote or headless machine), show the resting frame in a code block, list the notes in chat, and give the path.
+When the page cannot open here (an SSH session or a server with no display), show the resting frame in a code block, list the notes in chat, and give the path with a copy command for the user's own machine, such as `scp <this host>:<path> .`.
 
-Ask the user to approve the theme or say what to change. This step is done when they approve.
+End your turn by asking the user to approve the theme or say what to change. Their reply starts the next step: changes go to step 5, approval to step 6.
 
 ## 5. Revise
 
@@ -115,7 +117,7 @@ Apply each request, such as bigger ears or a darker color, to the theme. Call `p
 
 ## 6. Put it on screen
 
-On approval, call `set_theme` with `theme` left out, so it sets the last preview exactly as the user saw it. Offer to save it as `<name>.theme.json` in the current directory, so it can be edited and shared later. Tell the user to ask for the slime back to undo.
+For an approved preview, call `set_theme` with `theme` left out, so it sets the last preview exactly as the user saw it. For a ready-made theme, pass it as `theme`, then say what changed on screen. Offer to save it as `<name>.theme.json` in the current directory, so it can be edited and shared later. Tell the user to ask for the slime back to undo.
 
 ## Settings
 
