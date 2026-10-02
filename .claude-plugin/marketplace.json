@@ -1,0 +1,14 @@
+{
+  "name": "pixel-pet",
+  "description": "A pixel pet that lives above the Claude Code prompt",
+  "owner": {
+    "name": "halluqinate",
+    "url": "https://github.com/halluqinate"
+  },
+  "plugins": [
+    {
+      "name": "pixel-pet",
+      "source": "./plugins/pixel-pet"
+    }
+  ]
+}

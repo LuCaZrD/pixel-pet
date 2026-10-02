@@ -1,0 +1,21 @@
+{
+  "name": "duck",
+  "sprite": [
+    "...aaaaaaaa....",
+    "..alhyyyyyba...",
+    ".ayyyyyyyyyba..",
+    ".ayyyyyyyyyba.a",
+    ".ayyyyyyyyybaya",
+    "oooyyyyyyyyyyba",
+    "pppyyyyyyyyyyba",
+    ".ayyyybbbbyyyba",
+    ".ayyyyybbbbyyba",
+    ".aaaaaaaaaaaaa."
+  ],
+  "palette": { "a": "#8a4a0c", "b": "#e0a000", "y": "#ffd22e", "l": "#ffe680", "h": "#fff7c4", "o": "#ff8a1c", "p": "#d9600a" },
+  "outline": "a",
+  "eyes": [[3, 3], [7, 3]],
+  "cheeks": [[4, 5], [8, 5]],
+  "cheekColor": "#ff9a8a",
+  "mini": { "top": "#ffe680", "body": "#ffd22e", "edge": "#8a4a0c" }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "slime",
+  "scale": 0.8,
+  "sprite": [
+    "........a........",
+    ".......aha.......",
+    "......agfda......",
+    "....aagffddaa....",
+    "...ahgffffddda...",
+    "..ahhgffffffdda..",
+    ".agggfffffffddda.",
+    ".afffffffffdddca.",
+    "acdffffffffdddcca",
+    ".accddddddddddca.",
+    "..aaaaaaaaaaaaa.."
+  ],
+  "palette": { "a": "#1e3a8a", "c": "#2a5fd6", "d": "#3d84f0", "f": "#5aa9ff", "g": "#9ad2ff", "h": "#e3f4ff" },
+  "outline": "a",
+  "eyes": [[4, 5], [10, 5]],
+  "cheeks": [[3, 6], [13, 6]],
+  "cheekColor": "#ff8aaa",
+  "mini": { "top": "#9ad2ff", "body": "#3d84f0", "edge": "#1e3a8a" }
+}
