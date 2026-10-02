@@ -1,9 +1,9 @@
 ---
-name: new-pet
+name: pixel-pet
 description: Set up, draw, change, or recolor the pixel pet (mascot) shown above the prompt. Use when the user wants a new pet or mascot, wants the slime recolored or edited, wants to load or share a pet file, or wants the slime back.
 ---
 
-# New pet
+# Pixel pet
 
 Draw one still sprite with the user, preview it, revise until they approve, then put it on screen. Read [FORMAT.md](FORMAT.md) before you draw.
 

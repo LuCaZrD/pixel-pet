@@ -1,7 +1,7 @@
 import { BODY_W, EYE_COLOR, HEIGHT } from './pixels'
 import type { Body, BodyFrame } from './pixels'
 
-/** A pet as its file spells it. `skills/new-pet/FORMAT.md` documents each field for the people who write one. */
+/** A pet as its file spells it. `skills/pixel-pet/FORMAT.md` documents each field for the people who write one. */
 export type Pet = {
   name: string
   scale: number

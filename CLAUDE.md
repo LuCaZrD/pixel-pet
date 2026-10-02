@@ -4,7 +4,7 @@ pixel-pet is a Claude Code mod: a pixel pet above the prompt and a HUD below it.
 
 Use these words in code, comments, docs, and UI, and no others for the same thing.
 
-- **pet**: what the mod draws. **slime**: the default pet. **pet file**: a pet as JSON, in the format `skills/new-pet/FORMAT.md` documents. **sprite**: the one still drawing in a pet file. **clip**: a loop of frames, one of stand, run, jump, think, cheer. **frame**: one picture of a clip, made from the sprite. **body**: a pet made ready to draw by `animate`, with every clip.
+- **pet**: what the mod draws. **slime**: the default pet. **pet file**: a pet as JSON, in the format `skills/pixel-pet/FORMAT.md` documents. **sprite**: the one still drawing in a pet file. **clip**: a loop of frames, one of stand, run, jump, think, cheer. **frame**: one picture of a clip, made from the sprite. **body**: a pet made ready to draw by `animate`, with every clip.
 - **mode**: what the pet is acting out (`idle`, `read`, `bash`, ...). One mode has one set of status lines and one line color. User-facing text calls a mode's animation a **motion**. **face**: one eye expression, one of the 18 in `pixels.ts`.
 - **status line**: the text beside the pet. **band**: the `AbovePrompt` area the pet and status line sit in. **target**: what a tool call works on (a file, pattern, command, host, or search query), which the status line names.
 - **mini**: the small drop for one running subagent, in the pet's `mini` colors. **trail**: the minis behind the pet.
@@ -27,7 +27,7 @@ Use these words in code, comments, docs, and UI, and no others for the same thin
 - `tools/preview/build.mjs` joins `pixels.ts`, `pet.ts`, and `preview.ts` into one scope, imports and `export` stripped, so a top-level name declared in two of them breaks it. A module `preview.ts` newly imports goes on the `modules` list in `build.mjs`.
 - The poses in `pet.ts` and its `roundHalfEven` fix the slime's frames pixel for pixel; `pet.test.ts` pins them. A change to a pose changes every pet.
 - `readPet` refuses only a pet with no sprite. Everything else draws, repaired where needed, with a note saying what changed. Keep it that way: people and agents draw odd pets on purpose.
-- A field added to the pet format goes in `readPet`, in `skills/new-pet/FORMAT.md`, and in a test. A pet kept by an older version must still read.
+- A field added to the pet format goes in `readPet`, in `skills/pixel-pet/FORMAT.md`, and in a test. A pet kept by an older version must still read.
 - Every color must read on a dark terminal and on a light one. Pick mid tones; avoid near-white and near-black text.
 - Pass a string `key` to elements. A number fails the type check.
 - `register.tsx` is the adapter between Claude Code's events and the modules. Logic goes in a module with its own test, not in a hook.

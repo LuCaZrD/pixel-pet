@@ -109,7 +109,7 @@ export const register: Register = (on, options) => {
       await $.tool.register({
         name: 'preview_pet',
         description:
-          'Writes the preview of a pixel pet to `path`: an HTML page with every motion and face the mod makes from its sprite. It does not change the pet on screen. `pet` is a pet in the format the `pixel-pet:new-pet` skill describes. Returns the resting frame and notes on anything repaired.',
+          'Writes the preview of a pixel pet to `path`: an HTML page with every motion and face the mod makes from its sprite. It does not change the pet on screen. `pet` is a pet in the format the `pixel-pet:pixel-pet` skill describes. Returns the resting frame and notes on anything repaired.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -122,7 +122,7 @@ export const register: Register = (on, options) => {
       await $.tool.register({
         name: 'set_pet',
         description:
-          'Sets the pixel pet drawn above the prompt, at once, and keeps it for later sessions. `pet` is a pet in the format the `pixel-pet:new-pet` skill describes, or null for the default slime. Returns the resting frame and notes on anything repaired.',
+          'Sets the pixel pet drawn above the prompt, at once, and keeps it for later sessions. `pet` is a pet in the format the `pixel-pet:pixel-pet` skill describes, or null for the default slime. Returns the resting frame and notes on anything repaired.',
         inputSchema: {
           type: 'object',
           properties: { pet: { type: ['object', 'null'], description: 'The pet as a JSON object, or null for the default slime.' } },

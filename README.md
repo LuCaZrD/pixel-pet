@@ -23,7 +23,7 @@
 You need Claude Code v2.1.287 or later (`claude --version`).
 
 ```bash
-claude plugin marketplace add halluqinate/pixel-pet
+claude plugin marketplace add Namenomeaning/pixel-pet
 claude plugin install pixel-pet@pixel-pet
 ```
 
@@ -63,12 +63,12 @@ While the pet idles or thinks, its face follows the HUD: it sweats at 50 % HP or
 ## Make your own pet
 
 <p align="center">
-  <img src="docs/images/pets.gif" width="440" alt="The default slime beside a rubber duck made with the new-pet skill">
+  <img src="docs/images/pets.gif" width="440" alt="The default slime beside a rubber duck made with the pixel-pet skill">
 </p>
 
-Ask Claude for one in any session, such as "set up my pet as a rubber duck", or run `/pixel-pet:new-pet`. Claude draws the pet and opens its preview in your browser: a page with every motion and face, on a dark or a light background. Say what to change, and Claude redraws it. When you approve, the pet takes its place above the prompt and stays for later sessions. To undo, ask for the slime back.
+Ask Claude for one in any session, such as "set up my pet as a rubber duck", or run `/pixel-pet:pixel-pet`. Claude draws the pet and opens its preview in your browser: a page with every motion and face, on a dark or a light background. Say what to change, and Claude redraws it. When you approve, the pet takes its place above the prompt and stays for later sessions. To undo, ask for the slime back.
 
-You draw one still sprite, and the mod makes every motion and face from it. The format is in [`FORMAT.md`](plugins/pixel-pet/skills/new-pet/FORMAT.md). To share a pet, ask Claude to save it as a file. To use someone else's, ask Claude to load their file.
+You draw one still sprite, and the mod makes every motion and face from it. The format is in [`FORMAT.md`](plugins/pixel-pet/skills/pixel-pet/FORMAT.md). To share a pet, ask Claude to save it as a file. To use someone else's, ask Claude to load their file.
 
 ## Settings
 
@@ -116,7 +116,7 @@ Its `tool.call` hook sees each tool's input and keeps only a short target for th
 
 To check this yourself, clone the repo and run `claude plugin validate plugins/pixel-pet`. Its `calls:` line lists everything the mod asks Claude Code to do.
 
-To report a vulnerability, open a [private security advisory](https://github.com/halluqinate/pixel-pet/security/advisories/new).
+To report a vulnerability, open a [private security advisory](https://github.com/Namenomeaning/pixel-pet/security/advisories/new).
 
 ## Develop
 
@@ -139,7 +139,7 @@ plugins/pixel-pet/                the plugin: a Claude Code mod
   tsconfig.json                   type-checks the mod
   assets/slime.json               the default pet
   assets/duck.json                an example pet that faces to one side
-  skills/new-pet/                 the skill that draws a pet with you, and the pet format
+  skills/pixel-pet/               the skill that draws a pet with you, and the pet format
 tools/preview/build.mjs           writes the preview of a pet file
 docs/images/                      the images in this README
 ```
