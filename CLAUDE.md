@@ -30,6 +30,7 @@ Use these words in code, comments, docs, and UI, and no others for the same thin
 - A field added to the pet format goes in `readPet`, in `skills/pixel-pet/FORMAT.md`, and in a test. A pet kept by an older version must still read.
 - Every color must read on a dark terminal and on a light one. Pick mid tones; avoid near-white and near-black text.
 - Pass a string `key` to elements. A number fails the type check.
+- `tools/demo/record.mjs` lays out the band and the HUD as `register.tsx` does, with copies of its layout constants. A layout change in `register.tsx` goes in both.
 - `register.tsx` is the adapter between Claude Code's events and the modules. Logic goes in a module with its own test, not in a hook.
 
 ## Updates must not break

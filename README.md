@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/demo.gif" width="764" alt="A session in the terminal: the slime reads, searches, edits, runs a test, gets a mini for a subagent, and cheers when the turn ends">
+  <img src="docs/images/demo.gif" width="806" alt="A session in the terminal: the slime reads, searches, sends out a mini for a subagent, fetches a page, edits, fails a test and fixes it, and cheers when the turn ends">
 </p>
 
 ## Install
@@ -141,6 +141,7 @@ plugins/pixel-pet/                the plugin: a Claude Code mod
   assets/duck.json                an example pet that faces to one side
   skills/pixel-pet/               the skill that draws a pet with you, and the pet format
 tools/preview/build.mjs           writes the preview of a pet file
+tools/demo/record.mjs             records docs/images/demo.gif
 docs/images/                      the images in this README
 ```
 
@@ -155,6 +156,8 @@ claude plugin test plugins/pixel-pet
 `plugins/pixel-pet/tsconfig.json` extends `plugins/pixel-pet/.claude-plugin/types/tsconfig.json`, which Claude Code writes the first time it loads the mod. After one `--plugin-dir` session, `tsc -p plugins/pixel-pet` type-checks the mod. The tests don't need it.
 
 To see every motion, face, and frame of a pet, run `node tools/preview/build.mjs [pet file]` (Node 22.13 or later) and open `tools/preview/preview.html`. It writes the same preview `preview_pet` does, for the slime when you give no file, and prints the pet's resting frame and notes on anything it repaired.
+
+To record `docs/images/demo.gif` again after a change to the band or the HUD, run `node tools/demo/record.mjs` (Node 22.18 or later). It plays a scripted session through the mod's modules and needs Google Chrome (or its path in `CHROME`) and `ffmpeg`.
 
 Installed copies update only when `version` in `plugins/pixel-pet/.claude-plugin/plugin.json` changes, so bump it in every release. Contributor rules are in [`CLAUDE.md`](CLAUDE.md).
 
