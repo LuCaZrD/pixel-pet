@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 import type { SessionUsage } from 'claude-code'
 
-import { BAR_W, DETAIL_COLOR, HUD_WINDOW_W, barCanvas, fmtMin, hudFrom, hudRows, mood, windowEdges } from './hud'
+import { BAR_W, DETAIL_COLOR, HUD_WINDOW_W, barCanvas, fmtMin, frameColor, hudFrom, hudRows, mood, windowEdges } from './hud'
 
 const usage = (over: Partial<SessionUsage> = {}): SessionUsage => ({
   startedAt: 0,
@@ -73,4 +73,17 @@ test('the window edges span its width, with the corners left empty', () => {
   expect([...top].length).toBe(HUD_WINDOW_W)
   expect([...bottom].length).toBe(HUD_WINDOW_W)
   expect([top.at(0), top.at(-1), bottom.at(0), bottom.at(-1)]).toEqual([' ', ' ', ' ', ' '])
+})
+
+test("a pet's HUD look relabels, recolors, and hides bars, and keeps the warning colors", () => {
+  const h = { hp: 80, mp: 50, mpResetsInMin: 60, st: 10, stResetsInMin: 600 }
+  const rows = hudRows(h, { hp: { label: '☢ FUEL', color: '#00ff88', fill: ['#003300', '#00ff88'] }, mp: false, st: { fill: ['#000000', '#ffffff'] } })
+  expect(rows.map(r => r.key)).toEqual(['hp', 'st'])
+  expect(rows.map(r => r.label)).toEqual(['☢ FUEL', '◆ ST  '])
+  expect(rows[0]?.color).toBe('#00ff88')
+  expect(rows[0]?.parts[0]?.color).toBe('#00ff88')
+  expect(rows[1]?.parts[0]?.color).toBe('#f87171')
+  expect(hudRows(h, { hp: false, mp: false, st: false })).toEqual([])
+  expect(frameColor({ frame: '#44cc44' })).toBe('#44cc44')
+  expect(frameColor({})).toBe('#5aa9ff')
 })

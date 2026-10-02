@@ -1,32 +1,54 @@
 ---
 name: pixel-pet
-description: Set up, draw, change, or recolor the pixel pet (mascot) shown above the prompt. Use when the user wants a new pet or mascot, wants the slime recolored or edited, wants to load or share a pet file, or wants the slime back.
+description: Customize the pixel-pet theme. Draw, recolor, or edit the mascot, change its props (the thinking question mark, the web globe, the book, the terminal), minis, status line text and colors, and the HUD's look. Also sets speed, sleep, HUD on or off, status line on or off, naming files, and minis, loads or shares a theme file, and brings the slime back.
 ---
 
 # Pixel pet
 
-Draw one still sprite with the user, preview it, revise until they approve, then put it on screen. Read [FORMAT.md](FORMAT.md) before you draw.
+One entry point to change anything the mod draws: the pet, its props, its minis, the status line, the HUD, and the settings. A request can touch any subset. All of it but the settings lives in one theme: a JSON object with the pet's sprite and everything else it changes. Read [FORMAT.md](FORMAT.md) before you change a theme.
 
-Two tools do the work. Their full names end in `__preview_pet` and `__set_pet`; from the marketplace they are `mcp__pixel-pet__preview_pet` and `mcp__pixel-pet__set_pet`. When they are not listed, follow [Troubleshooting](#troubleshooting) and stop.
+Three tools do the work. Their full names end in `__get_theme`, `__preview_theme`, and `__set_theme`; from the marketplace they are `mcp__pixel-pet__get_theme`, `mcp__pixel-pet__preview_theme`, and `mcp__pixel-pet__set_theme`. When they are not listed, follow [Troubleshooting](#troubleshooting) and stop.
 
-- `preview_pet` takes `pet` and `path`, and writes an HTML page of every motion and face. The pet on screen stays as it is.
-- `set_pet` takes `pet`, or `null` for the slime. It shows the pet above the prompt and keeps it for later sessions.
+- `get_theme` takes no input and returns the theme on screen: the one `set_theme` kept, or the slime's.
+- `preview_theme` takes `theme` and `path`, and writes an HTML page of the theme. What is on screen stays as it is.
+- `set_theme` takes `theme`, `null` for the slime, or no `theme` for the last theme `preview_theme` drew in this session. It replaces the whole theme on screen, at once, and keeps it for later sessions.
 
-The mod makes every motion and face from the one sprite, plus the props and minis. Draw the sprite only, and check the preview for the rest.
-
-Everything below is a default that makes a good mascot. The user's idea wins: a pet with no eyes, a tall thin one, a wild palette. The tools draw nearly anything and return notes on what they repaired.
+Everything below is a default that makes a good pet. The user's idea wins: a pet with no eyes, a tall thin one, a wild palette. The tools draw nearly anything and return notes on what they repaired.
 
 ## 1. Find out what they want
 
-When the request settles the path, go to step 2. Otherwise ask one question:
+Name the parts the request touches:
 
-> Recolor the slime, a new pet (describe it), load a pet file (give the path), or the slime back?
+| The user wants | Part | Reference |
+| --- | --- | --- |
+| A new mascot, a recolor, new eyes or cheeks | the sprite, `palette`, `eyes`, `cheeks` | [Fields](FORMAT.md#theme-format), [Size](FORMAT.md#size), [Eyes](FORMAT.md#eyes) |
+| An effect in a mode: the book, the globe, the terminal, the question mark | `props` | [Props](FORMAT.md#props), [Modes](FORMAT.md#modes) |
+| What a running subagent looks like | `mini`, `miniSprite` | [Minis](FORMAT.md#minis) |
+| The words beside the pet, or their color | `lines`, `lineColors` | [Status lines](FORMAT.md#status-lines) |
+| The HUD's frame, labels, colors, fills, or a hidden bar | `hud` | [HUD](FORMAT.md#hud) |
+| Speed, sleep, the HUD or status line on or off, naming files, minis on or off | settings, not the theme | [Settings](#settings) |
+
+A whole style ("a pirate pet") touches the sprite, the lines, and the HUD at once. Change each and say what you changed.
+
+When the request does not settle the parts, ask one question:
+
+> Recolor or edit your pet, draw a new one (describe it), change its props, minis, text, or HUD, load a theme file (give the path), change a setting, or get the slime back?
 
 When they ask for a new pet without a description, ask what it is and its main color, in that one question.
 
-## 2. Make the pet
+## 2. Get the starting theme
 
-**Recolor the slime.** Read [`assets/slime.json`](../../assets/slime.json). Keep its `sprite`, `eyes`, `cheeks`, and `outline`. Replace each `palette` color with one of the new hue, in the same order from light (`h`) to dark (`a`). Recolor `mini` to match. When the new hue is near pink, change `cheekColor` so the cheeks show.
+`set_theme` replaces the whole theme, so every change starts from a complete one.
+
+- A new pet: no starting theme. Go to step 3.
+- A theme file the user gives: read it and use its object as `theme`.
+- Anything else: call `get_theme` and use the theme it returns.
+
+A request for one part keeps every other field of the starting theme as it is.
+
+## 3. Make the changes
+
+**Recolor the slime.** When the starting pet is the slime, keep its `sprite`, `eyes`, `cheeks`, and `outline`. Replace each `palette` color with one of the new hue, in the same order from light (`h`) to dark (`a`). Recolor `mini` to match. When the new hue is near pink, change `cheekColor` so the cheeks show.
 
 **A new pet.** Draw from the description. Do not ask about size or format.
 
@@ -62,36 +84,67 @@ Example, a front-facing cat ([`assets/duck.json`](../../assets/duck.json) is a s
 }
 ```
 
-**Load a pet file.** Read the file and use its object as `pet`.
+**Props.** Find the mode in [Modes](FORMAT.md#modes) from the user's words: the question mark and dots are `think`, the book is `read`, the globe is `web`. Ask what should appear when the user has not said. Draw each prop in the pet's palette, and add a palette entry for every color it needs.
 
-**The slime back.** Call `set_pet` with `pet` set to `null`. Tell the user the slime is back. Stop.
+**Minis.** Recolor the drop with `mini`, or draw a `miniSprite` as a small relative of the pet, in its palette.
 
-## 3. Preview it
+**Status lines.** Write each line in the pet's voice, in the tone of the mod's own, listed in [`hooks/status.ts`](../../hooks/status.ts). Change only the modes the user names. Give each mode a line without `{}` ([why](FORMAT.md#status-lines)).
 
-Call `preview_pet` with `pet` and an absolute `path` in the temp folder, such as `/tmp/cat.pet.html`.
+**The HUD.** Pick a `frame` color and each bar's label, color, and fill. Pick mid tones. Keep a label to 6 characters.
 
-- A pet with no sprite is refused. Add a sprite and call again.
-- Any other pet draws. The result lists the clips and faces made, the resting frame (`@` is a pupil, `*` a cheek), and notes.
+**The slime back.** Call `set_theme` with `theme` set to `null`. Tell the user the slime is back. Stop.
+
+## 4. Preview it
+
+Call `preview_theme` before every `set_theme`, and skip it only when the user asks to skip it. Pass `theme` and an absolute `path` in the temp folder, such as `/tmp/cat.theme.html`.
+
+- A theme with no sprite is refused. Add a sprite and call again.
+- Any other theme draws. The result gives the resting frame (`@` is a pupil, `*` a cheek) and notes.
 - Read the resting frame. The pupils sit where the face should be, each feature reads, and no pixel strays.
 - Read the notes against [FORMAT.md](FORMAT.md#notes). Fix a note that names something the user did not mean, such as a color drawn clear. Leave the rest as drawn.
 
-Open the page: `open <path>` on macOS, `xdg-open <path>` on Linux, `start <path>` on Windows. Tell the user it shows every motion, face, and frame, and that its button shows the pet on a light terminal. Ask them to approve the pet or say what to change.
+Open the page: `open <path>` on macOS, `xdg-open <path>` on Linux, `start <path>` on Windows. Tell the user the page shows each mode in motion with its props, every face, each mode's status lines in their colors, the HUD in two sample states, and the frames, and that its button shows the pet on a light terminal.
 
-## 4. Revise
+When the page cannot open (a remote or headless machine), show the resting frame in a code block, list the notes in chat, and give the path.
 
-Apply each request, such as bigger ears or a darker color, to the sprite or palette. Call `preview_pet` again with the same `path`, and ask them to reload the page. Change only what they asked for. Redraw from scratch only when they ask.
+Ask the user to approve the theme or say what to change. This step is done when they approve.
 
-## 5. Put it on screen
+## 5. Revise
 
-On approval, call `set_pet` with the approved `pet`. Offer to save it as `<name>.pet.json` in the current directory, for sharing. Tell the user to ask for the slime back to undo.
+Apply each request, such as bigger ears or a darker color, to the theme. Call `preview_theme` again with the same `path`, and ask them to reload the page. Change only what they asked for. Redraw from scratch only when they ask.
+
+## 6. Put it on screen
+
+On approval, call `set_theme` with `theme` left out, so it sets the last preview exactly as the user saw it. Offer to save it as `<name>.theme.json` in the current directory, so it can be edited and shared later. Tell the user to ask for the slime back to undo.
+
+## Settings
+
+Settings are the user's choices, kept apart from the theme. They need no preview. In a session, the user runs `/plugin configure pixel-pet@pixel-pet`. From a shell, pipe a JSON object of strings:
+
+```bash
+echo '{"speed": "fast", "hud": "false"}' | claude plugin configure pixel-pet@pixel-pet --values-stdin
+```
+
+Options left out keep their values. The change applies after Claude Code restarts, so tell the user to start a new session. `claude plugin configure pixel-pet@pixel-pet --json` lists each setting's type, default, and limits.
+
+| Key | Values | What it sets |
+| --- | --- | --- |
+| `speed` | `slow`, `normal`, `fast` | How quickly the pet runs and animates. |
+| `sleepAfter` | seconds, 0 to 3600 | Idle time before the pet sleeps. `0` keeps it awake. |
+| `hud` | `true`, `false` | The HP, MP, and ST bars below the prompt. |
+| `statusLine` | `true`, `false` | The text beside the pet. |
+| `targets` | `true`, `false` | The status line names the file, pattern, command, host, or search query. `false` suits a shared screen. |
+| `minis` | `true`, `false` | A mini behind the pet for each running subagent. |
 
 ## Troubleshooting
 
 | What happens | Why, and what to tell the user |
 | --- | --- |
-| The tools are not listed | pixel-pet is not installed, or the session started before it loaded. Install it with `claude plugin install pixel-pet@pixel-pet`, then start a new session. After `/reload-plugins`, the tools appear from the next prompt on. |
+| The tools are not listed (`get_theme`, `preview_theme`, `set_theme`) | pixel-pet is not installed, or the session started before it loaded. Install it with `claude plugin install pixel-pet@pixel-pet`, then tell the user to run `/reload-plugins` or start a new session. After `/reload-plugins`, the tools appear from the next prompt on. Continue once they are listed. Preview and set through the tools only: the repo's `tools/preview/build.mjs` and a hand-written store both bypass the mod. |
 | The tools are still missing after an install | Claude Code is older than v2.1.287, which mods need. Check with `claude --version` and update Claude Code. |
+| After install: "N userConfig options not yet set" | Every setting has a default. Nothing to do. |
 | An update changed nothing | An installed copy updates only when the plugin's version changes. Run `claude plugin marketplace update pixel-pet`, then `claude plugin update pixel-pet@pixel-pet`, and start a new session. |
-| The pet does not show | The VS Code chat panel, `claude -p`, and cloud sessions do not draw it. It shows in a terminal and in the Desktop app's Code tab. |
-| A toast says "your pet no longer reads", and the slime is back | The kept pet has no sprite left. Load the user's pet file again, or draw it again. |
-| The preview page does not open | Give the user the path to open in a browser. |
+| The pet does not show | The VS Code chat panel, `claude -p`, and cloud sessions do not draw it. It shows in a terminal and in the Desktop app's Code tab. The HUD shows only in a terminal. |
+| A setting changed nothing | Settings apply after a restart. Start a new session. |
+| A toast says "your theme no longer reads", and the slime is back | The kept theme has no sprite left. Load the user's theme file again, or draw it again. |
+| The preview page does not open | Show the resting frame and the notes in chat, and give the user the path to open in a browser. |

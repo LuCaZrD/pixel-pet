@@ -14,9 +14,9 @@ registerHooks({ resolve: (spec, ctx, next) => next(/^\.\.?\//.test(spec) && !/\.
 const plugin = new URL('../../plugins/pixel-pet/', import.meta.url)
 const hook = name => import(new URL(`hooks/${name}.ts`, plugin).href)
 const { TICK_MS, fail, step } = await hook('anim')
-const { BAR_W, FRAME_COLOR, HUD_WINDOW_W, hudRows, mood, windowEdges } = await hook('hud')
+const { BAR_W, HUD_WINDOW_W, frameColor, hudRows, mood, windowEdges } = await hook('hud')
 const { minisOnScreen } = await hook('minis')
-const { animate, readPet } = await hook('pet')
+const { animate, readTheme } = await hook('theme')
 const { BODY_W, MAX_MINIS, compose, encodeCells, trailWidth } = await hook('pixels')
 const { lineColor, statusLine, targetOf, toolMode } = await hook('status')
 
@@ -104,10 +104,10 @@ function screen(t, a, body) {
   const elapsed = t - a.since
   const picture = compose(body, a.mode, elapsed, a.dir, mood(hud), minis)
   const extra = minis.length > MAX_MINIS ? ` (+${minis.length - MAX_MINIS} minis)` : ''
-  const line = statusLine(a.mode, a.since, elapsed, a.target) + extra
+  const line = statusLine(a.mode, a.since, elapsed, a.target, body.look.lines[a.mode]) + extra
   const x = Math.min(Math.round(a.x), Math.max(0, COLS - picture.w - line.length - 4))
   ops.push({ kind: 'raster', row: band, col: x, columns: picture.w, cells: encodeCells(picture) })
-  ops.push({ kind: 'text', row: band + ROWS - 2, col: x + picture.w + 1, text: `› ${line}`, color: lineColor(a.mode), bold: true })
+  ops.push({ kind: 'text', row: band + ROWS - 2, col: x + picture.w + 1, text: `› ${line}`, color: lineColor(a.mode, body.look.lineColors), bold: true })
 
   const prompt = band + ROWS
   const typed = t < TYPED[0] ? 0 : t >= TURN[0] ? 0 : Math.round(PROMPT.length * Math.min(1, (t - TYPED[0]) / (TYPED[1] - TYPED[0])))
@@ -117,18 +117,20 @@ function screen(t, a, body) {
   ops.push({ kind: 'text', row: prompt + 3, col: 2, text: '⏵⏵ auto mode on (shift+tab to cycle)', color: '#6b7499' })
 
   const edges = windowEdges(HUD_WINDOW_W)
+  const frame = frameColor(body.look.hud)
+  const rows = hudRows(hud, body.look.hud)
   const top = prompt + 4
-  ops.push({ kind: 'text', row: top, col: 1, text: edges.top, color: FRAME_COLOR })
-  hudRows(hud).forEach((r, i) => {
+  ops.push({ kind: 'text', row: top, col: 1, text: edges.top, color: frame })
+  rows.forEach((r, i) => {
     const row = top + 1 + i
-    ops.push({ kind: 'text', row, col: 1, text: edges.side, color: FRAME_COLOR })
+    ops.push({ kind: 'text', row, col: 1, text: edges.side, color: frame })
     ops.push({ kind: 'text', row, col: 3, text: `${r.label} `, color: r.color })
     const bar = 3 + [...`${r.label} `].length
     ops.push({ kind: 'raster', row, col: bar, columns: BAR_W, cells: r.cells })
     ops.push(...spansOps(row, bar + BAR_W, r.parts))
-    ops.push({ kind: 'text', row, col: HUD_WINDOW_W, text: edges.side, color: FRAME_COLOR })
+    ops.push({ kind: 'text', row, col: HUD_WINDOW_W, text: edges.side, color: frame })
   })
-  ops.push({ kind: 'text', row: top + 1 + hudRows(hud).length, col: 1, text: edges.bottom, color: FRAME_COLOR })
+  ops.push({ kind: 'text', row: top + 1 + rows.length, col: 1, text: edges.bottom, color: frame })
   return ops
 }
 
@@ -139,7 +141,7 @@ function minisAt(t) {
 
 // The pet tick by tick, as register.tsx's clock hook steps it, with each frame's screen.
 function play() {
-  const body = animate(readPet(JSON.parse(readFileSync(new URL('assets/slime.json', plugin), 'utf8'))).pet)
+  const body = animate(readTheme(JSON.parse(readFileSync(new URL('assets/slime.json', plugin), 'utf8'))).theme)
   let a = { mode: 'idle', since: 0, x: 0, dir: 1, tick: 0, target: '', working: false }
   let ops
   const frames = []

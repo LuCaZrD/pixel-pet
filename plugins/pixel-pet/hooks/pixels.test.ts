@@ -13,6 +13,8 @@ const body: Body = {
   palette: { d: 0x3d84f0 },
   eye: EYE_COLOR,
   mini: { top: 0x9ad2ff, body: 0x3d84f0, edge: 0x1e3a8a },
+  props: {},
+  look: { lines: {}, lineColors: {}, hud: {} },
   clips: { stand: clip, run: clip, jump: clip, think: clip, cheer: clip },
 }
 
@@ -85,4 +87,28 @@ test('a time before the mode began draws its first frame', () => {
   for (const mode of Object.keys(MODES) as (keyof typeof MODES)[]) {
     expect(compose(body, mode, -250, 1).px).toEqual(compose(body, mode, 0, 1).px)
   }
+})
+
+test("a pet's own prop replaces the mod's, plays its frames, and null leaves the mode without one", () => {
+  const own: Body = { ...body, props: { read: [['dd'], ['..', 'dd']], bash: null, think: [['d']] } }
+  const first = compose(own, 'read', 0, 1)
+  const second = compose(own, 'read', 250, 1)
+  expect(first.w).toBe(33)
+  expect(first.px[19 * 33 + 17]).toBe(0x3d84f0)
+  expect(first.px[18 * 33 + 17]).toBe(-1)
+  expect(second.px[18 * 33 + 17]).toBe(-1)
+  expect(second.px[19 * 33 + 17]).toBe(0x3d84f0)
+  expect(compose(own, 'bash', 0, 1).w).toBe(19)
+  expect(compose(own, 'think', 0, 1).w).toBe(33)
+  expect(compose(body, 'think', 0, 1).px).toContain(0xffe25a)
+  expect(compose(own, 'think', 0, 1).px).not.toContain(0xffe25a)
+})
+
+test("a pet's own mini draws in its palette, and grey once its subagent fails", () => {
+  const own: Body = { ...body, palette: { d: 0x3d84f0, g: 0x44cc44 }, miniSprite: ['ggggg'] }
+  const running = compose(own, 'idle', 0, 1, 'ok', [{ age: 5000 }])
+  const failed = compose(own, 'idle', 0, 1, 'ok', [{ age: 5000, doneFor: 100, failed: true }])
+  expect(running.px.filter(c => c === 0x44cc44)).toHaveLength(5)
+  expect(failed.px.filter(c => c === 0x44cc44)).toHaveLength(0)
+  expect(failed.px.filter(c => c !== -1 && ((c >> 16) & 255) === (c & 255) && (c & 255) === ((c >> 8) & 255)).length).toBeGreaterThanOrEqual(5)
 })

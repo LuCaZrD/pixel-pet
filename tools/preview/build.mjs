@@ -1,27 +1,22 @@
-// Writes tools/preview/preview.html: the same preview the preview_pet tool writes, for a pet file.
-// Run: node tools/preview/build.mjs [pet file], the default slime when no pet file is given. It prints the
-// pet's resting frame and notes, or exits 1 when the pet has no sprite.
+// Writes tools/preview/preview.html: the same preview the preview_theme tool writes, for a theme file.
+// Run: node tools/preview/build.mjs [theme file], the default slime when no theme file is given. It prints the
+// pet's resting frame and notes, or exits 1 when the theme has no sprite. Needs Node 22.18 or later.
 import { readFileSync, writeFileSync } from 'node:fs'
-import { stripTypeScriptTypes } from 'node:module'
+import { registerHooks } from 'node:module'
 
-process.removeAllListeners('warning') // stripTypeScriptTypes is experimental and says so on every run
-
+// The hooks import each other without an extension, as the mod's bundler allows.
+registerHooks({ resolve: (spec, ctx, next) => next(/^\.\.?\//.test(spec) && !/\.[a-z]+$/.test(spec) ? `${spec}.ts` : spec, ctx) })
 const plugin = new URL('../../plugins/pixel-pet/', import.meta.url)
-const source = name =>
-  stripTypeScriptTypes(readFileSync(new URL(`hooks/${name}`, plugin), 'utf8'))
-    .replace(/^import .*$/gm, '')
-    .replace(/^export /gm, '')
-// The modules share one scope here, imports stripped, so a top-level name declared in two of them breaks the build.
-const modules = ['pixels.ts', 'pet.ts', 'preview.ts'].map(source).join('\n')
-const { animate, previewPage, readPet, restingFrame } = new Function(`${modules}\nreturn { animate, previewPage, readPet, restingFrame }`)()
+const { animate, readTheme, restingFrame } = await import(new URL('hooks/theme.ts', plugin).href)
+const { previewPage } = await import(new URL('hooks/preview.ts', plugin).href)
 
-const petFile = process.argv[2] ?? new URL('assets/slime.json', plugin)
-const read = readPet(JSON.parse(readFileSync(petFile, 'utf8')))
+const themeFile = process.argv[2] ?? new URL('assets/slime.json', plugin)
+const read = readTheme(JSON.parse(readFileSync(themeFile, 'utf8')))
 if (read.errors) {
-  console.error(`${petFile}: ${read.errors.join(' ')}`)
+  console.error(`${themeFile}: ${read.errors.join(' ')}`)
   process.exit(1)
 }
-const body = animate(read.pet)
+const body = animate(read.theme)
 console.log(restingFrame(body))
 for (const note of read.notes) console.log(`note: ${note}`)
 

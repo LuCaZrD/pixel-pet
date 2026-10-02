@@ -3,11 +3,11 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Anim, Mode } from '../types'
 import { TICK_MS, fail, step } from './anim'
-import { BAR_W, FRAME_COLOR, HUD_WINDOW_W, hudFrom, hudRows, mood, windowEdges } from './hud'
+import { BAR_W, HUD_WINDOW_W, frameColor, hudFrom, hudRows, mood, windowEdges } from './hud'
 import type { Hud } from './hud'
 import { minisOnScreen, reconcile } from './minis'
 import type { Mini } from './minis'
-import { animate, readPet, restingFrame } from './pet'
+import { animate, readTheme, restingFrame } from './theme'
 import { previewPage } from './preview'
 import { readSettings } from './settings'
 import { BODY_W, FACES, MAX_MINIS, compose, encodeCells, encodeSvg, trailWidth } from './pixels'
@@ -21,11 +21,12 @@ const USAGE_EVERY_BEATS = 20
 const AGENTS_EVERY_BEATS = 5
 const SLOW_BEATS: Partial<Record<Mode, number>> = { idle: 2, sleep: 4 } // ticks per redraw while nothing moves fast
 
-const PET_KEY = 'pet' // in $.store: the pet file set_pet last took
+const THEME_KEY = 'theme' // in $.store: the theme set_theme last took
 const OWN_TOOLS = 'mcp__pixel-pet__'
 // Literals, so `claude plugin validate` can read the hooks' matchers.
-const SET_PET = 'mcp__pixel-pet__set_pet'
-const PREVIEW_PET = 'mcp__pixel-pet__preview_pet'
+const SET_THEME = 'mcp__pixel-pet__set_theme'
+const PREVIEW_THEME = 'mcp__pixel-pet__preview_theme'
+const GET_THEME = 'mcp__pixel-pet__get_theme'
 
 const anim = atom({ plugin: 'pixel-pet', key: 'anim' } as const, {
   mode: 'idle',
@@ -55,33 +56,33 @@ async function minisOr($: EngineInterface, now: number, last: Mini[]) {
   }
 }
 
-/** What preview_pet and set_pet tell Claude about a pet: the clips and faces made, the resting frame, and readPet's notes. */
-function petReport(pet: Body, notes: string[]) {
+/** What preview_theme and set_theme tell Claude about a theme's pet: the clips and faces made, the resting frame, and readTheme's notes. */
+function themeReport(pet: Body, notes: string[]) {
   const made = `${Object.keys(pet.clips).join(', ')}, and ${FACES.length} faces`
   const noted = notes.length > 0 ? `\n\nNotes, to act on or leave as drawn:\n- ${notes.join('\n- ')}` : ''
 
   return `The mod made every clip and face from the sprite: ${made}.\n\nResting frame (@ is a pupil, * a cheek):\n${restingFrame(pet)}${noted}`
 }
 
-/** The default slime, from the plugin's own pet file. */
+/** The default slime theme, from the plugin's own file. */
 async function slimeBody($: EngineInterface) {
-  const read = readPet(JSON.parse(await $.fs.read(`${$.plugin.root}/assets/slime.json`)))
+  const read = readTheme(JSON.parse(await $.fs.read(`${$.plugin.root}/assets/slime.json`)))
   if (read.errors) {
     throw new Error(`assets/slime.json: ${read.errors.join(' ')}`)
   }
 
-  return animate(read.pet)
+  return animate(read.theme)
 }
 
-/** The pet set_pet kept in an earlier session, else the slime. A kept pet this version cannot read gives way to the slime, with a toast. */
+/** The theme set_theme kept in an earlier session, else the slime. A kept theme this version cannot read gives way to the slime, with a toast. */
 async function keptBody($: EngineInterface) {
-  const kept = await $.store.get(PET_KEY)
+  const kept = await $.store.get(THEME_KEY)
   if (kept !== undefined) {
-    const read = readPet(kept)
+    const read = readTheme(kept)
     if (!read.errors) {
-      return animate(read.pet)
+      return animate(read.theme)
     }
-    $.ui.toast(`pixel-pet: your pet no longer reads (${read.errors[0]}). Showing the slime.`)
+    $.ui.toast(`pixel-pet: your theme no longer reads (${read.errors[0]}). Showing the slime.`)
   }
 
   return slimeBody($)
@@ -100,6 +101,7 @@ export const register: Register = (on, options) => {
   let body: Body | undefined
   let hud: Hud | undefined
   let minis: Mini[] = []
+  let previewed: unknown // the last theme preview_theme drew, for set_theme to apply without resending it
 
   on('session.start', async ($, e, next) => {
     const now = await $.clock.now()
@@ -107,30 +109,35 @@ export const register: Register = (on, options) => {
     hud = await usageOr($, now, undefined)
     try {
       await $.tool.register({
-        name: 'preview_pet',
+        name: 'preview_theme',
         description:
-          'Writes the preview of a pixel pet to `path`: an HTML page with every motion and face the mod makes from its sprite. It does not change the pet on screen. `pet` is a pet in the format the `pixel-pet:pixel-pet` skill describes. Returns the resting frame and notes on anything repaired.',
+          'Writes the preview of a pixel-pet theme to `path`: an HTML page with every motion, face, status line, and HUD look of its pet. It does not change what is on screen. `theme` is in the format the `pixel-pet:pixel-pet` skill describes. Returns the resting frame and notes on anything repaired.',
         inputSchema: {
           type: 'object',
           properties: {
-            pet: { type: 'object', description: 'The pet as a JSON object, in the format FORMAT.md documents.' },
+            theme: { type: 'object', description: 'The theme as a JSON object, in the format FORMAT.md documents.' },
             path: { type: 'string', description: 'Absolute path of the HTML file to write, such as one in the temp folder.' },
           },
-          required: ['pet', 'path'],
+          required: ['theme', 'path'],
         },
       })
       await $.tool.register({
-        name: 'set_pet',
+        name: 'set_theme',
         description:
-          'Sets the pixel pet drawn above the prompt, at once, and keeps it for later sessions. `pet` is a pet in the format the `pixel-pet:pixel-pet` skill describes, or null for the default slime. Returns the resting frame and notes on anything repaired.',
+          'Sets the pixel-pet theme: the pet, its props, minis, status lines, and HUD look, at once, kept for later sessions. `theme` is in the format the `pixel-pet:pixel-pet` skill describes, or null for the default slime. Leave `theme` out to set the last theme preview_theme drew in this session. Returns the resting frame and notes on anything repaired.',
         inputSchema: {
           type: 'object',
-          properties: { pet: { type: ['object', 'null'], description: 'The pet as a JSON object, or null for the default slime.' } },
-          required: ['pet'],
+          properties: { theme: { type: ['object', 'null'], description: 'The theme as a JSON object, null for the default slime, or left out for the last preview.' } },
         },
       })
+      await $.tool.register({
+        name: 'get_theme',
+        description:
+          'Returns the pixel-pet theme on screen: the one set_theme kept, or the default slime\'s. Start a change from it, so set_theme keeps everything the change leaves alone.',
+        inputSchema: { type: 'object', properties: {} },
+      })
     } catch {
-      // Without the tools the pet still draws; only making a new one is missing.
+      // Without the tools the pet still draws; only changing the theme is missing.
     }
 
     $.clock.every(TICK_MS, async () => {
@@ -181,56 +188,78 @@ export const register: Register = (on, options) => {
     return result
   })
 
-  on('tool.call', { tool: PREVIEW_PET }, async ($, e) => {
-    const { pet, path } = e as unknown as { pet?: unknown; path?: unknown }
-    const read = readPet(pet)
+  on('tool.call', { tool: PREVIEW_THEME }, async ($, e) => {
+    const { theme, path } = e as unknown as { theme?: unknown; path?: unknown }
+    const read = readTheme(theme)
     if (read.errors) {
       return { deny: `No preview was written: ${read.errors.join(' ')}` }
     }
     if (typeof path !== 'string' || path === '') {
       return { deny: 'No preview was written: `path` is the HTML file to write.' }
     }
-    const preview = animate(read.pet)
+    const preview = animate(read.theme)
     await $.fs.write(path, previewPage(preview, read.notes))
+    previewed = theme
 
-    return { result: `Wrote the preview of ${read.pet.name} to ${path}. The pet on screen has not changed.\n\n${petReport(preview, read.notes)}` }
+    return { result: `Wrote the preview of ${read.theme.name} to ${path}. What is on screen has not changed.\n\n${themeReport(preview, read.notes)}` }
   })
 
-  on('tool.call', { tool: SET_PET }, async ($, e) => {
-    const value = (e as unknown as { pet?: unknown }).pet
-    if (value === null || value === undefined) {
-      await $.store.delete(PET_KEY)
+  on('tool.call', { tool: GET_THEME }, async $ => {
+    const kept = await $.store.get(THEME_KEY)
+    if (kept === undefined) {
+      return { result: `No theme is kept, so the slime is on screen. Its theme:\n\n${await $.fs.read(`${$.plugin.root}/assets/slime.json`)}` }
+    }
+
+    return { result: `The theme set_theme kept:\n\n${JSON.stringify(kept, null, 2)}` }
+  })
+
+  on('tool.call', { tool: SET_THEME }, async ($, e) => {
+    const given = (e as unknown as { theme?: unknown }).theme
+    if (given === undefined && previewed === undefined) {
+      return { deny: 'The theme was not set: no preview_theme call in this session to apply. Pass `theme`.' }
+    }
+    const value = given === undefined ? previewed : given
+    if (value === null) {
+      await $.store.delete(THEME_KEY)
       body = await slimeBody($)
       $.ui.invalidate('ui.render')
 
       return { result: 'The slime is back, for this session and later ones.' }
     }
-    const read = readPet(value)
+    const read = readTheme(value)
     if (read.errors) {
-      return { deny: `The pet was not set: ${read.errors.join(' ')}` }
+      return { deny: `The theme was not set: ${read.errors.join(' ')}` }
     }
-    await $.store.set(PET_KEY, value)
-    body = animate(read.pet)
+    await $.store.set(THEME_KEY, value)
+    body = animate(read.theme)
     $.ui.invalidate('ui.render')
 
-    return { result: `${read.pet.name} is above the prompt now, for this session and later ones.\n\n${petReport(body, read.notes)}` }
+    return { result: `The ${read.theme.name} theme is on screen now, for this session and later ones.\n\n${themeReport(body, read.notes)}` }
   })
 
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     if (!settings.hud || !hud || e.surface !== 'terminal') {
       return next(e)
     }
+    if (!body) {
+      body = await keptBody($)
+    }
+    const rows = hudRows(hud, body.look.hud)
+    if (rows.length === 0) {
+      return next(e)
+    }
     const { Box, Raster, Text } = $.ui.resolve(e)
     const edges = windowEdges(HUD_WINDOW_W)
+    const frame = frameColor(body.look.hud)
 
     return (
       <Box flexDirection="column">
         {await next(e)}
         <Box flexDirection="column" marginLeft={1}>
-          <Text color={FRAME_COLOR}>{edges.top}</Text>
-          {hudRows(hud).map(r => (
+          <Text color={frame}>{edges.top}</Text>
+          {rows.map(r => (
             <Box key={r.key}>
-              <Text color={FRAME_COLOR}>{edges.side}</Text>
+              <Text color={frame}>{edges.side}</Text>
               <Box width={HUD_WINDOW_W - 2} paddingLeft={1}>
                 <Text color={r.color}>{r.label} </Text>
                 <Raster key={`bar-${r.key}`} columns={BAR_W} rows={1} cells={r.cells} />
@@ -240,10 +269,10 @@ export const register: Register = (on, options) => {
                   </Text>
                 ))}
               </Box>
-              <Text color={FRAME_COLOR}>{edges.side}</Text>
+              <Text color={frame}>{edges.side}</Text>
             </Box>
           ))}
-          <Text color={FRAME_COLOR}>{edges.bottom}</Text>
+          <Text color={frame}>{edges.bottom}</Text>
         </Box>
       </Box>
     )
@@ -266,7 +295,7 @@ export const register: Register = (on, options) => {
       const views = minisOnScreen(minis, now)
       const picture = compose(body, a.mode, elapsed * settings.pace, a.dir, hud ? mood(hud) : 'ok', views)
       const extra = views.length > MAX_MINIS ? ` (+${views.length - MAX_MINIS} minis)` : ''
-      const line = settings.statusLine ? statusLine(a.mode, a.since, elapsed, a.target) + extra : ''
+      const line = settings.statusLine ? statusLine(a.mode, a.since, elapsed, a.target, body.look.lines[a.mode]) + extra : ''
       if (showsError) {
         showsError = false
         $.ui.status(undefined)
@@ -282,7 +311,7 @@ export const register: Register = (on, options) => {
               <Raster key="pet" columns={picture.w} rows={ROWS} cells={encodeCells(picture)} />
               {line && (
                 <Box marginBottom={1} marginLeft={1}>
-                  <Text color={lineColor(a.mode)} bold>
+                  <Text color={lineColor(a.mode, body.look.lineColors)} bold>
                     › {line}
                   </Text>
                 </Box>
@@ -300,7 +329,7 @@ export const register: Register = (on, options) => {
               <Svg source={encodeSvg(picture)} alt={`${body.name}, ${a.mode}`} width={picture.w * 4} height={80} />
             </Box>
             {line && (
-              <Text color={lineColor(a.mode)} bold>
+              <Text color={lineColor(a.mode, body.look.lineColors)} bold>
                 {line}
               </Text>
             )}

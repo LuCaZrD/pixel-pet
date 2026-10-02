@@ -1,9 +1,10 @@
 import type { Mode } from '../types'
+import type { HudLook } from './hud'
 
 export type Clip = 'stand' | 'run' | 'jump' | 'think' | 'cheer'
 export type BodyFrame = { g: string[]; l: [number, number]; r: [number, number]; e: string }
 export type MiniColors = { top: number; body: number; edge: number }
-/** A pet ready to draw: `animate` in pet.ts makes one from a pet file. */
+/** A pet ready to draw: `animate` in theme.ts makes one from a theme. */
 export type Body = {
   name: string
   w: number
@@ -11,8 +12,13 @@ export type Body = {
   palette: Record<string, number> // frame character -> color
   eye: Record<string, number> // expression character -> color
   mini: MiniColors
+  miniSprite?: string[] // the pet's own mini, in its palette, in place of the drop
+  props: Partial<Record<Mode, string[][] | null>> // the pet's own props: frames of rows in its palette; null for none
+  look: Look
   clips: Record<Clip, { fps: number; frames: BodyFrame[] }>
 }
+/** What a pet changes beyond its drawing: its status lines, their colors, and the HUD. */
+export type Look = { lines: Partial<Record<Mode, string[]>>; lineColors: Partial<Record<Mode, string>>; hud: HudLook }
 export type Canvas = { w: number; h: number; px: number[] }
 
 const NONE = -1
@@ -21,6 +27,7 @@ export const PROP_X = 17 // the prop's 16x20 box starts here; the body's right e
 export const BODY_W = 19
 export const PROP_W = 16
 export const HEIGHT = 20
+const PROP_FPS = 4 // for a pet's own props
 
 export const EYE_COLOR: Record<string, number> = { K: 0x000000, W: 0xffffff, Y: 0xffe25a, H: 0xff78aa, B: 0x78c8ff }
 
@@ -325,30 +332,45 @@ export type MiniView = { age: number; doneFor?: number; failed?: boolean }
 
 export const MAX_MINIS = 6
 const MINI_W = 6 // a 5 px mini and a 1 px gap
+export const MINI_SIZE = { w: 5, h: 7 }
 const MINI_DROP_MS = 300
 
 export const trailWidth = (count: number) => Math.min(count, MAX_MINIS) * MINI_W
 
 const MINI_FAILED = { top: hex('#b4b4b4'), body: hex('#8b93a1'), edge: hex('#5a606b') }
 
-function drawMini(c: Canvas, ox: number, m: MiniView, k: number, pet: MiniColors) {
+const grey = (c: number) => {
+  const l = Math.round(0.3 * ((c >> 16) & 255) + 0.59 * ((c >> 8) & 255) + 0.11 * (c & 255))
+  return (l << 16) | (l << 8) | l
+}
+
+function drawMini(c: Canvas, ox: number, m: MiniView, k: number, body: Body) {
   let lift = Math.round(Math.abs(Math.sin(m.age / 260 + k * 1.3)) * 3)
   if (m.age < MINI_DROP_MS) {
     lift = Math.round((1 - m.age / MINI_DROP_MS) * 10)
   } else if (m.doneFor !== undefined && !m.failed) {
     lift = Math.round(Math.abs(Math.sin(m.doneFor / 160)) * 5)
   }
-  const y = HEIGHT - 5 - lift
-  const colors = m.failed ? MINI_FAILED : pet
+  const rows = body.miniSprite
+  const y = HEIGHT - (rows?.length ?? 5) - lift
+  if (rows) {
+    const palette = m.failed ? Object.fromEntries(Object.entries(body.palette).map(([ch, color]) => [ch, grey(color)])) : body.palette
+    stamp(c, ox, y, rows, palette)
+  } else {
+    drawDrop(c, ox, y, m.failed ? MINI_FAILED : body.mini)
+  }
+  if (m.doneFor !== undefined && !m.failed && Math.floor(m.doneFor / 180) % 2 === 0) {
+    put(c, ox + 2, y - 2, EYE_COLOR.Y as number)
+  }
+}
+
+function drawDrop(c: Canvas, ox: number, y: number, colors: MiniColors) {
   put(c, ox + 2, y, colors.top)
   rect(c, ox + 1, y + 1, 3, 1, colors.top)
   rect(c, ox, y + 2, 5, 2, colors.body)
   put(c, ox + 1, y + 2, 0)
   put(c, ox + 3, y + 2, 0)
   rect(c, ox + 1, y + 4, 3, 1, colors.edge)
-  if (m.doneFor !== undefined && !m.failed && Math.floor(m.doneFor / 180) % 2 === 0) {
-    put(c, ox + 2, y - 2, EYE_COLOR.Y as number)
-  }
 }
 
 function overlay(out: Canvas, src: Canvas, ox: number) {
@@ -375,8 +397,8 @@ const QUESTION = ['YYY', '..Y', '.Y.', '...', '.Y.']
 const DUST = hex('#8b93a1')
 const THOUGHT = hex('#c8c8c8')
 
-function effects(c: Canvas, mode: Mode, clipIndex: number, t: number) {
-  if (mode === 'think') {
+function effects(c: Canvas, mode: Mode, clipIndex: number, t: number, ownThink: boolean) {
+  if (mode === 'think' && !ownThink) {
     stamp(c, 14, 2 + (Math.floor(t / 400) % 2), QUESTION, EYE_COLOR)
     for (let k = 0; k < 1 + (Math.floor(t / 500) % 3); k++) {
       put(c, 13 + k * 2, 9, THOUGHT)
@@ -389,6 +411,22 @@ function effects(c: Canvas, mode: Mode, clipIndex: number, t: number) {
     rect(c, 18, 19, 1, 1, DUST)
     put(c, 17, 18, DUST)
   }
+}
+
+/** How the prop of `mode` draws: the pet's own, the mod's, or none. */
+function propOf(body: Body, mode: Mode): ((c: Canvas, t: number) => void) | undefined {
+  const own = body.props[mode]
+  if (own === null) {
+    return undefined
+  }
+  if (own) {
+    return (c, t) => {
+      const rows = own[frameIndex(own.length, PROP_FPS, t, true)] as string[]
+      stamp(c, 0, HEIGHT - rows.length, rows, body.palette)
+    }
+  }
+
+  return MODES[mode].prop ? PROPS[mode] : undefined
 }
 
 // ---- compose ----
@@ -410,12 +448,13 @@ export function compose(body: Body, mode: Mode, elapsedMs: number, dir: 1 | -1, 
   stamp(pet, frame.l[0] + shift, frame.l[1], eyes.l, body.eye)
   stamp(pet, frame.r[0] + shift, frame.r[1], eyes.r, body.eye)
   eyes.fx?.(pet)
-  effects(pet, mode, index, elapsedMs)
+  // A pet's own think prop, or none, takes the place of the question mark.
+  effects(pet, mode, index, elapsedMs, body.props.think !== undefined)
 
-  const drawProp = spec.prop ? PROPS[mode] : undefined
+  const drawProp = mode === 'run' ? undefined : propOf(body, mode)
   const trail = trailWidth(minis.length)
   const out = canvas(trail + (drawProp ? PROP_X + PROP_W : BODY_W), HEIGHT)
-  minis.slice(0, MAX_MINIS).forEach((m, k) => drawMini(out, trail - (k + 1) * MINI_W, m, k, body.mini))
+  minis.slice(0, MAX_MINIS).forEach((m, k) => drawMini(out, trail - (k + 1) * MINI_W, m, k, body))
   overlay(out, pet, trail)
   if (drawProp) {
     const prop = canvas(PROP_W, HEIGHT)

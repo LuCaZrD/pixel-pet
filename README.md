@@ -60,15 +60,24 @@ MP and ST turn red under 15 %. Each shows on Pro and Max plans once a response h
 
 While the pet idles or thinks, its face follows the HUD: it sweats at 50 % HP or less, gets `x x` eyes at 25 % HP or less, and looks tired under 20 % MP or ST.
 
-## Make your own pet
+## Make it yours
 
 <p align="center">
   <img src="docs/images/pets.gif" width="440" alt="The default slime beside a rubber duck made with the pixel-pet skill">
 </p>
 
-Ask Claude for one in any session, such as "set up my pet as a rubber duck", or run `/pixel-pet:pixel-pet`. Claude draws the pet and opens its preview in your browser: a page with every motion and face, on a dark or a light background. Say what to change, and Claude redraws it. When you approve, the pet takes its place above the prompt and stays for later sessions. To undo, ask for the slime back.
+Ask Claude in any session, or run `/pixel-pet:pixel-pet`. You can change:
 
-You draw one still sprite, and the mod makes every motion and face from it. The format is in [`FORMAT.md`](plugins/pixel-pet/skills/pixel-pet/FORMAT.md). To share a pet, ask Claude to save it as a file. To use someone else's, ask Claude to load their file.
+- **the pet**: "set up my pet as a rubber duck", "make the slime purple";
+- **its props and effects**: "a UFO tablet when it reads", "a radar dish for web searches", "no question mark when it thinks";
+- **its minis**: "a tiny saucer for each subagent";
+- **the text**: "alien status lines", "make the bash line red";
+- **the HUD**: "a green frame", "rename HP to FUEL", "hide ST";
+- **the settings** below, such as speed and sleep.
+
+Claude opens a preview in your browser first: every motion, face, status line, and HUD look, on a dark or a light background. Say what to change, and Claude redraws it. When you approve, the change shows above the prompt at once and stays for later sessions. To undo, ask for the slime back.
+
+All of it lives in one theme, a JSON file documented in [`FORMAT.md`](plugins/pixel-pet/skills/pixel-pet/FORMAT.md). [`alien.json`](plugins/pixel-pet/assets/alien.json) uses every field. To share a theme, ask Claude to save it as a file. To use someone else's, ask Claude to load their file.
 
 ## Settings
 
@@ -89,7 +98,7 @@ From a shell, pipe the values as JSON, then restart Claude Code:
 echo '{"speed": "fast", "sleepAfter": "300"}' | claude plugin configure pixel-pet@pixel-pet --values-stdin
 ```
 
-`claude plugin configure pixel-pet@pixel-pet` with no input lists the settings and which you have set.
+`claude plugin configure pixel-pet@pixel-pet` with no input lists the settings and which you have set. The install's "6 userConfig options not yet set" needs nothing from you: each setting has a default.
 
 ## Update
 
@@ -108,8 +117,8 @@ The pet draws with colored text cells, so it works in any terminal with 24-bit c
 
 A mod runs inside Claude Code with your permissions. pixel-pet:
 
-- reads only its own pet files, polls session usage and the list of subagents, and draws;
-- registers two tools for making a pet: `preview_pet` writes a preview page to the path Claude gives it, and `set_pet` changes the pet and keeps it in the mod's own store;
+- reads only its own theme files, polls session usage and the list of subagents, and draws;
+- registers three tools for changing the theme: `get_theme` returns the theme on screen, `preview_theme` writes a preview page to the path Claude gives it, and `set_theme` changes the theme and keeps it in the mod's own store;
 - makes no network requests, starts no processes, and reads no environment variables.
 
 Its `tool.call` hook sees each tool's input and keeps only a short target for the status line. The status line shows the first line of a `Bash` command, cut to 24 characters; the **Name files and commands** setting turns that off.
@@ -128,7 +137,7 @@ plugins/pixel-pet/                the plugin: a Claude Code mod
   hooks/register.tsx              wires Claude Code's events to the modules below, and serves the tools
   hooks/anim.ts                   decides what the pet does on each tick
   hooks/pixels.ts                 draws a frame: body, eyes, props, effects, and minis
-  hooks/pet.ts                    reads a pet file and makes its frames for every motion
+  hooks/theme.ts                  reads a theme and makes its pet's frames for every motion
   hooks/preview.ts                writes the preview: every motion, face, and frame of a pet
   hooks/status.ts                 the status line beside the pet
   hooks/hud.ts                    the HP, MP, and ST bars in their window
@@ -139,8 +148,9 @@ plugins/pixel-pet/                the plugin: a Claude Code mod
   tsconfig.json                   type-checks the mod
   assets/slime.json               the default pet
   assets/duck.json                an example pet that faces to one side
+  assets/alien.json               an example pet that uses every field
   skills/pixel-pet/               the skill that draws a pet with you, and the pet format
-tools/preview/build.mjs           writes the preview of a pet file
+tools/preview/build.mjs           writes the preview of a theme file
 tools/demo/record.mjs             records docs/images/demo.gif
 docs/images/                      the images in this README
 ```
@@ -155,7 +165,7 @@ claude plugin test plugins/pixel-pet
 
 `plugins/pixel-pet/tsconfig.json` extends `plugins/pixel-pet/.claude-plugin/types/tsconfig.json`, which Claude Code writes the first time it loads the mod. After one `--plugin-dir` session, `tsc -p plugins/pixel-pet` type-checks the mod. The tests don't need it.
 
-To see every motion, face, and frame of a pet, run `node tools/preview/build.mjs [pet file]` (Node 22.13 or later) and open `tools/preview/preview.html`. It writes the same preview `preview_pet` does, for the slime when you give no file, and prints the pet's resting frame and notes on anything it repaired.
+To see every motion, face, status line, HUD look, and frame of a pet, run `node tools/preview/build.mjs [theme file]` (Node 22.18 or later) and open `tools/preview/preview.html`. It writes the same preview `preview_theme` does, for the slime when you give no file, and prints the pet's resting frame and notes on anything it repaired.
 
 To record `docs/images/demo.gif` again after a change to the band or the HUD, run `node tools/demo/record.mjs` (Node 22.18 or later). It plays a scripted session through the mod's modules and needs Google Chrome (or its path in `CHROME`) and `ffmpeg`.
 

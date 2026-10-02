@@ -18,6 +18,14 @@ export type Hud = {
 
 export type Mood = 'ok' | 'worried' | 'critical' | 'tired'
 
+/** A pet's look for one bar: its label, the label's color, and the fill while the bar is healthy. */
+export type BarLook = { label?: string; color?: string; fill?: [string, string] }
+/** A pet's look for the HUD: the frame's color, and each bar's look, or false to hide it. */
+export type HudLook = { frame?: string; hp?: BarLook | false; mp?: BarLook | false; st?: BarLook | false }
+
+/** The frame's color: the pet's own, else the mod's. */
+export const frameColor = (look: HudLook) => look.frame ?? FRAME_COLOR
+
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const finite = (v: number | undefined) => (v !== undefined && Number.isFinite(v) ? v : undefined)
 
@@ -112,22 +120,28 @@ const detail = (bits: (string | undefined)[]): HudPart[] => {
 
 const resets = (min: number | undefined) => (min === undefined ? undefined : `reset in ${fmtMin(min)}`)
 
-/** The HUD's rows: HP always, MP and ST when the session has their readings. */
-export function hudRows(h: Hud): HudRow[] {
-  const hpFill = h.hp > 50 ? GREEN : h.hp > 25 ? YELLOW : RED
-  const rows: HudRow[] = [
-    {
-      key: 'hp',
-      label: h.hp < 10 ? '⚠ HP' : '♥ HP',
-      color: '#f87171',
-      cells: encodeCells(barCanvas(h.hp, hpFill)),
-      parts: [reading(`${h.hp}%`, hpFill), ...(h.hp < 10 ? [{ ...reading('/compact', RED), text: '  /compact' }] : [])],
-    },
-  ]
+const pairOf = (fill: [string, string] | undefined, fallback: Pair): Pair => (fill ? [parseInt(fill[0].slice(1), 16), parseInt(fill[1].slice(1), 16)] : fallback)
+
+/**
+ * The HUD's rows: HP, and MP and ST when the session has their readings, each in the pet's `look` unless
+ * the look hides it. A bar's warning colors (yellow and red) replace its fill whatever the look.
+ */
+export function hudRows(h: Hud, look: HudLook = {}): HudRow[] {
+  const rows: (HudRow & { look: BarLook | false | undefined })[] = []
+  const hpFill = h.hp > 50 ? pairOf(look.hp ? look.hp.fill : undefined, GREEN) : h.hp > 25 ? YELLOW : RED
+  rows.push({
+    key: 'hp',
+    look: look.hp,
+    label: h.hp < 10 ? '⚠ HP' : '♥ HP',
+    color: '#f87171',
+    cells: encodeCells(barCanvas(h.hp, hpFill)),
+    parts: [reading(`${h.hp}%`, hpFill), ...(h.hp < 10 ? [{ ...reading('/compact', RED), text: '  /compact' }] : [])],
+  })
   if (h.mp !== undefined) {
-    const mpFill = h.mp < 15 ? RED : BLUE
+    const mpFill = h.mp < 15 ? RED : pairOf(look.mp ? look.mp.fill : undefined, BLUE)
     rows.push({
       key: 'mp',
+      look: look.mp,
       label: '✦ MP',
       color: '#7aa7ff',
       cells: encodeCells(barCanvas(h.mp, mpFill)),
@@ -135,16 +149,23 @@ export function hudRows(h: Hud): HudRow[] {
     })
   }
   if (h.st !== undefined) {
-    const stFill = h.st < 15 ? RED : GOLD
+    const stFill = h.st < 15 ? RED : pairOf(look.st ? look.st.fill : undefined, GOLD)
     rows.push({
       key: 'st',
+      look: look.st,
       label: '◆ ST',
       color: '#fbbf24',
       cells: encodeCells(barCanvas(h.st, stFill)),
       parts: [reading(`${h.st}%`, stFill), ...detail([resets(h.stResetsInMin)])],
     })
   }
-  return rows
+  const shown = rows
+    .filter(r => r.look !== false)
+    .map(({ look: bar, ...r }) => (bar ? { ...r, label: bar.label ?? r.label, color: bar.color ?? r.color } : r))
+  // Labels pad to one width, so the bars line up.
+  const width = Math.max(0, ...shown.map(r => [...r.label].length))
+
+  return shown.map(r => ({ ...r, label: r.label + ' '.repeat(width - [...r.label].length) }))
 }
 
 /**

@@ -1,6 +1,9 @@
 import type { Mode } from '../types'
+import { HUD_WINDOW_W, frameColor, hudRows, windowEdges } from './hud'
+import type { Hud } from './hud'
 import { BODY_W, FACES, HEIGHT, MODES, compose, composeFace } from './pixels'
 import type { Body, Canvas, Clip } from './pixels'
+import { LINES, lineColor } from './status'
 
 // When each mode plays, in the words of the README's table.
 const WHEN: Record<Mode, string> = {
@@ -18,6 +21,12 @@ const WHEN: Record<Mode, string> = {
   error: 'A tool call fails',
   cheer: 'A turn ends',
 }
+// What the status line names in each mode, for the lines that name something.
+const SAMPLE_TARGET: Partial<Record<Mode, string>> = { read: 'app.ts', search: 'useState', edit: 'app.ts', bash: 'npm test', web: 'docs.anthropic.com' }
+const SAMPLE_HUDS: [string, Hud][] = [
+  ['Early in a session', { hp: 86, mp: 72, mpResetsInMin: 213, st: 64, stResetsInMin: 4560 }],
+  ['Running low', { hp: 22, mp: 12, mpResetsInMin: 41, st: 9, stResetsInMin: 1500 }],
+]
 const MOTION_FPS = 10
 const FACE_FPS = 5
 const LOOP_MS = 2400
@@ -32,7 +41,7 @@ type Tile = { label: string; note: string; w: number; h: number; fps: number; fr
 /**
  * The preview: a self-contained HTML page with every motion, face, and frame the mod makes for `body`. It shows each mode in
  * motion with when it plays, each face, and each clip's frames before eyes go on. A button switches to a light
- * terminal's background. `notes` are readPet's.
+ * terminal's background. `notes` are readTheme's.
  */
 export function previewPage(body: Body, notes: string[]): string {
   const colors: number[] = []
@@ -80,6 +89,22 @@ export function previewPage(body: Body, notes: string[]): string {
   const name = escapeHtml(body.name)
   const tiles = (list: Tile[], kind: string) =>
     list.map((t, i) => `<figure><canvas data-kind="${kind}" data-i="${i}" width="${t.w * 4}" height="${t.h * 4}"></canvas><figcaption><b>${t.label}</b>${t.note ? `<span>${escapeHtml(t.note)}</span>` : ''}</figcaption></figure>`).join('')
+  const statusLines = (Object.keys(WHEN) as Mode[])
+    .map(mode => {
+      const lines = (body.look.lines[mode] ?? LINES[mode]).map(l => `<li>› ${escapeHtml(l.replace('{}', SAMPLE_TARGET[mode] ?? 'something'))}</li>`).join('')
+      return `<div class="lines"><b>${mode}</b><ul style="color: ${lineColor(mode, body.look.lineColors)}">${lines}</ul></div>`
+    })
+    .join('')
+  const edges = windowEdges(HUD_WINDOW_W)
+  const huds = SAMPLE_HUDS.map(([label, h]) => {
+    const rows = hudRows(h, body.look.hud)
+    const inside = rows.length === 0
+      ? '<p>The pet hides every bar, so the HUD does not show.</p>'
+      : `<pre class="hud" style="color: ${frameColor(body.look.hud)}">${escapeHtml(edges.top)}\n${rows
+          .map(r => `${edges.side} <span style="color: ${r.color}">${escapeHtml(r.label)} </span><canvas class="bar" data-cells="${r.cells}"></canvas>${r.parts.map(p => `<span style="color: ${p.color}${p.bold ? '; font-weight: bold' : ''}">${escapeHtml(p.text)}</span>`).join('')}`)
+          .join('\n')}\n${escapeHtml(edges.bottom)}</pre>`
+    return `<figure class="wide"><figcaption><b>${label}</b></figcaption>${inside}</figure>`
+  }).join('')
   const noteList = notes.length > 0 ? `<section class="notes"><h2>Notes</h2><ul>${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul></section>` : ''
 
   return `<!doctype html>
@@ -103,11 +128,17 @@ export function previewPage(body: Body, notes: string[]): string {
   figcaption { display: grid; text-align: center; }
   figcaption span { font-size: 12px; opacity: 0.7; }
   .notes { max-width: 1100px; border: 2px solid #e0b400; padding: 0 16px 8px; }
+  .wide-cells { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .stack { display: grid; gap: 16px; max-width: 1100px; }
+  .wide { justify-items: start; overflow-x: auto; }
+  .lines ul { margin: 4px 0 0; padding: 0; list-style: none; font-weight: bold; }
+  .hud { margin: 0; line-height: 18px; }
+  .hud canvas.bar { width: 180px; height: 18px; vertical-align: top; }
 </style>
 </head>
 <body>
 <header>
-  <div><h1>${name}</h1><p>Every state the mod made from the sprite. Approve it in Claude Code, or say what to change.</p></div>
+  <div><h1>${name}</h1><p>Every motion, face, status line, and HUD look of this pet. Approve it in Claude Code, or say what to change.</p></div>
   <button type="button" aria-pressed="false" id="light">Light terminal</button>
 </header>
 ${noteList}
@@ -115,6 +146,11 @@ ${noteList}
 <div class="grid">${tiles(motions, 'motion')}</div>
 <h2>Faces</h2>
 <div class="grid">${tiles(faces, 'face')}</div>
+<h2>Status lines</h2>
+<p>The line beside the pet in each mode. One shows at a time, and the next takes over every 4 seconds.</p>
+<div class="grid wide-cells">${statusLines}</div>
+<h2>HUD</h2>
+<div class="stack">${huds}</div>
 <h2>Frames</h2>
 <p>Each clip as the mod squashes and stretches the sprite, before eyes and props go on.</p>
 <div class="grid">${tiles(clips, 'clip')}</div>
@@ -123,7 +159,7 @@ const PALETTE = ${JSON.stringify(palette)}
 const CODES = ${JSON.stringify(CODES.slice(0, palette.length).join(''))}
 const TILES = { motion: ${JSON.stringify(motions)}, face: ${JSON.stringify(faces)}, clip: ${JSON.stringify(clips)} }
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches
-const canvases = [...document.querySelectorAll('canvas')].map(c => ({ ctx: c.getContext('2d'), tile: TILES[c.dataset.kind][c.dataset.i] }))
+const canvases = [...document.querySelectorAll('canvas[data-kind]')].map(c => ({ ctx: c.getContext('2d'), tile: TILES[c.dataset.kind][c.dataset.i] }))
 function draw(ctx, tile, frame) {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   for (let i = 0; i < frame.length; i++) {
@@ -138,6 +174,21 @@ function loop(now) {
   if (!still) requestAnimationFrame(loop)
 }
 requestAnimationFrame(loop)
+// A bar's cells as the terminal draws them: little-endian u32 triplets [glyph, fg, bg], ▀ or ▄, 2 pixels per cell.
+for (const bar of document.querySelectorAll('canvas.bar')) {
+  const b = atob(bar.dataset.cells)
+  const u32 = k => (b.charCodeAt(k) | (b.charCodeAt(k + 1) << 8) | (b.charCodeAt(k + 2) << 16) | (b.charCodeAt(k + 3) << 24)) >>> 0
+  const cells = b.length / 12
+  bar.width = cells * 9
+  bar.height = 18
+  const ctx = bar.getContext('2d')
+  for (let i = 0; i < cells; i++) {
+    const [glyph, fg, bg] = [u32(i * 12), u32(i * 12 + 4), u32(i * 12 + 8)]
+    const half = (color, y) => { if (color < 0x1000000) { ctx.fillStyle = '#' + color.toString(16).padStart(6, '0'); ctx.fillRect(i * 9, y, 9, 9) } }
+    if (glyph === 0x2580) { half(fg, 0); half(bg, 9) }
+    if (glyph === 0x2584) half(fg, 9)
+  }
+}
 const light = document.getElementById('light')
 light.onclick = () => light.setAttribute('aria-pressed', String(document.body.classList.toggle('light')))
 </script>

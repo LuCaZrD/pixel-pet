@@ -1,0 +1,186 @@
+{
+  "name": "alien",
+  "sprite": [
+    "..y.........y..",
+    "...a.......a...",
+    "....aaaaaaa....",
+    "..aagggggggaa..",
+    ".aggggggggggga.",
+    ".aggggggggggga.",
+    "aggggggggggggga",
+    "aggggggmgggggga",
+    ".asssssssssssa.",
+    "..aaaaaaaaaaa.."
+  ],
+  "palette": {
+    "a": "#1f5e2a",
+    "g": "#5ed14a",
+    "s": "#3d9a34",
+    "y": "#ffe25a",
+    "m": "#1d4a24",
+    "k": "#b8c2d6",
+    "b": "#0d2a3a",
+    "c": "#9fe3ff"
+  },
+  "outline": "a",
+  "eyes": [
+    [
+      4,
+      4
+    ],
+    [
+      8,
+      4
+    ]
+  ],
+  "cheeks": [
+    [
+      3,
+      6
+    ],
+    [
+      11,
+      6
+    ]
+  ],
+  "mini": {
+    "top": "#b6f58a",
+    "body": "#5ed14a",
+    "edge": "#1d4a24"
+  },
+  "miniSprite": [
+    ".ccc.",
+    "kkkkk",
+    ".y.y."
+  ],
+  "props": {
+    "think": [
+      [
+        "..yyy.",
+        "....y.",
+        "...y..",
+        "......",
+        "...y..",
+        "......",
+        "......",
+        "c.....",
+        "......",
+        "......"
+      ],
+      [
+        "..yyy.",
+        "....y.",
+        "...y..",
+        "......",
+        "...y..",
+        "......",
+        "c.....",
+        "......",
+        ".c....",
+        "......"
+      ]
+    ],
+    "read": [
+      [
+        "kkkkkkkkkkkk",
+        "kbbbbbbbbbbk",
+        "kbcbbbbbbbbk",
+        "kbbbbbcbbbbk",
+        "kbbybbbbbcbk",
+        "kbbbbbbbbbbk",
+        "kbbbcbbybbbk",
+        "kbbbbbbbbbbk",
+        "kkkkkkkkkkkk"
+      ],
+      [
+        "kkkkkkkkkkkk",
+        "kbbbbbbbbbbk",
+        "kbbbbbbbcbbk",
+        "kbbcbbbbbbbk",
+        "kbbbbbbbbbbk",
+        "kbbbbbcbbbbk",
+        "kbcbbbbbbbbk",
+        "kbbbbbbbbybk",
+        "kkkkkkkkkkkk"
+      ]
+    ],
+    "web": [
+      [
+        "..k......",
+        ".kkk.....",
+        "kkkkk....",
+        ".kkk.....",
+        "..a......",
+        "..a......",
+        ".aaa....."
+      ],
+      [
+        "..k....c.",
+        ".kkk.c..c",
+        "kkkkk.c.c",
+        ".kkk.c..c",
+        "..a....c.",
+        "..a...c..",
+        ".aaa....."
+      ]
+    ]
+  },
+  "lines": {
+    "idle": [
+      "scanning for life forms",
+      "phoning home…",
+      "hovering politely"
+    ],
+    "sleep": [
+      "zzz… drifting in orbit"
+    ],
+    "think": [
+      "consulting the mothership",
+      "probing the problem"
+    ],
+    "read": [
+      "decoding {}",
+      "scanning {}"
+    ],
+    "search": [
+      "tractor-beaming \"{}\""
+    ],
+    "edit": [
+      "terraforming {}"
+    ],
+    "bash": [
+      "$ {}",
+      "launching {}"
+    ],
+    "web": [
+      "signalling {}"
+    ],
+    "agent": [
+      "deploying the saucers"
+    ],
+    "cheer": [
+      "mission complete ✦",
+      "take me to your leader!"
+    ],
+    "error": [
+      "houston, we have a problem"
+    ]
+  },
+  "lineColors": {
+    "idle": "#3fb43f",
+    "run": "#3fb43f",
+    "jump": "#3fb43f",
+    "agent": "#3fb43f"
+  },
+  "hud": {
+    "frame": "#3fb43f",
+    "hp": {
+      "label": "☢ HP",
+      "color": "#3fb43f",
+      "fill": [
+        "#1d6b2a",
+        "#7cff6b"
+      ]
+    }
+  }
+}

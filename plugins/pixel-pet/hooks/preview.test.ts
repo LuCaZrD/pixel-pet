@@ -1,11 +1,11 @@
 import { expect, test } from 'claude-code/testing'
 
-import { animate, readPet } from './pet'
+import { animate, readTheme } from './theme'
 import { FACES } from './pixels'
 import { previewPage } from './preview'
 
-const read = readPet({ name: 'Tom <&> Jerry', sprite: ['.aaa.', 'aaaaa', 'aaaaa'], palette: { a: '#336699' } })
-const body = read.errors ? undefined : animate(read.pet)
+const read = readTheme({ name: 'Tom <&> Jerry', sprite: ['.aaa.', 'aaaaa', 'aaaaa'], palette: { a: '#336699' } })
+const body = read.errors ? undefined : animate(read.theme)
 
 test('the preview shows every mode with when it plays, every face, and every clip', () => {
   const page = previewPage(body!, [])

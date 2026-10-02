@@ -55,7 +55,8 @@ export function targetOf(tool: string, input: Record<string, unknown>) {
   }
 }
 
-const LINES: Record<Mode, string[]> = {
+/** The mod's status lines by mode; `{}` stands for the target. A pet's own `lines` replace a mode's. */
+export const LINES: Record<Mode, string[]> = {
   idle: ['hmm, what shall we build?', 'counting pixels…', '*stretches*', 'tidying up', 'ready when you are'],
   sleep: ['zzz… wake me with a prompt', 'zzz… dreaming in pixels', 'zzz…'],
   think: ['pondering', 'chewing on the problem', 'asking around', 'compiling excuses…', 'almost got it…'],
@@ -90,12 +91,15 @@ const LINE_COLOR: Record<Mode, string> = {
   error: '#f0506e',
 }
 
-/** The color of the status line and its arrow in this mode. */
-export const lineColor = (mode: Mode) => LINE_COLOR[mode]
+/** The color of the status line and its arrow in this mode: the pet's own, else the mod's. */
+export const lineColor = (mode: Mode, own: Partial<Record<Mode, string>> = {}) => own[mode] ?? LINE_COLOR[mode]
 
-/** A line for the mode; the pick moves on every 4 s and starts differently per `since`. With no target, only lines that need none. */
-export function statusLine(mode: Mode, since: number, elapsedMs: number, target: string) {
-  const all = LINES[mode]
+/**
+ * A line for the mode, from the pet's `own` lines when it has them; the pick moves on every 4 s and starts
+ * differently per `since`. With no target, only lines that need none.
+ */
+export function statusLine(mode: Mode, since: number, elapsedMs: number, target: string, own?: string[]) {
+  const all = own ?? LINES[mode]
   const untargeted = all.filter(l => !l.includes('{}'))
   const lines = target || untargeted.length === 0 ? all : untargeted
   const seed = Math.abs(Math.floor(since / 100)) % lines.length

@@ -27,3 +27,10 @@ test('every mode has its own line color', () => {
   expect(lineColor('bash')).toBe('#2fbf5b')
   expect(lineColor('error')).toBe('#f0506e')
 })
+
+test("a pet's own lines and colors replace the mod's for their modes", () => {
+  expect(statusLine('read', 0, 0, 'app.ts', ['scanning {} with my eye stalks'])).toBe('scanning app.ts with my eye stalks')
+  expect(statusLine('read', 0, 0, '', ['beaming up {}', 'humming'])).toBe('humming')
+  expect(lineColor('bash', { bash: '#00ff88' })).toBe('#00ff88')
+  expect(lineColor('read', { bash: '#00ff88' })).toBe('#e8a33d')
+})
