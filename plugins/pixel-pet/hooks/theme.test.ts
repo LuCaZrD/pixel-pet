@@ -186,3 +186,22 @@ test('a look the mod cannot use is left out or cut, with a note', () => {
     '`hud.mp` is an object or false, so that bar keeps its own look.',
   ])
 })
+
+test('a scene keeps its ground, obstacles, and decor in the palette, and notes what it cut', () => {
+  const palette = { ...slime.palette, r: '#9aa0b0' }
+  const read = readTheme({ ...slime, palette, scene: { ground: ['rr'], obstacles: [['rrrrrrrrrr', 'rrrrrrrrrr']], decor: ['zz'], every: 10 } })
+  if (read.errors) {
+    throw new Error(read.errors.join('\n'))
+  }
+  expect(read.theme.scene).toEqual({ ground: ['rr'], obstacles: [['rrrrrrrr', 'rrrrrrrr']], decor: [['zz']], every: 30 })
+  expect(read.notes.some(n => n.includes('`scene.obstacles` 1 is 10×2, past the largest, 8×6'))).toBe(true)
+  expect(read.notes.some(n => n.includes('In `scene.decor` 1, "z" has no palette color'))).toBe(true)
+  expect(read.notes.some(n => n.includes('`scene.every` is a number of columns from 30 to 120, so it is 30.'))).toBe(true)
+})
+
+test('a scene with nothing to draw is left out, with a note', () => {
+  const read = readTheme({ ...slime, scene: {} })
+  expect(read.errors ? undefined : [read.theme.scene, read.notes]).toEqual([undefined, ['`scene` has no ground, sky, obstacles, or decor to draw, so the pet has no scene.']])
+  expect(themeOf({ ...slime, scene: { ground: ['a'] } }).scene).toEqual({ ground: ['a'], obstacles: [], decor: [], every: 40 })
+  expect(themeOf({ ...slime, scene: { sky: ['.a.', 'aaa'] } }).scene).toEqual({ sky: ['.a.', 'aaa'], obstacles: [], decor: [], every: 40 })
+})

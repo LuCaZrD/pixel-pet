@@ -2,6 +2,8 @@ import type { Mode } from '../types'
 import type { BarLook, HudLook } from './hud'
 import { BODY_W, EYE_COLOR, HEIGHT, MINI_SIZE, MODES, PROP_W } from './pixels'
 import type { Body, BodyFrame, Look } from './pixels'
+import { EVERY, SCENE_SIZE } from './scene'
+import type { Scene } from './scene'
 
 /** A theme as its file spells it: the pet's sprite and everything else it changes. `skills/pixel-pet/FORMAT.md` documents each field for the people who write one. */
 export type Theme = {
@@ -17,6 +19,7 @@ export type Theme = {
   mini: { top: string; body: string; edge: string }
   miniSprite?: string[]
   props: Body['props']
+  scene?: Scene
 } & Look
 
 // The frames mark cheeks and sparkles, and the resting frame pupils, with characters a palette may not use.
@@ -258,6 +261,50 @@ function readHud(v: unknown, notes: string[]) {
   return hud
 }
 
+/** A list of drawings in the pet's palette, each cut to `max`; at most SCENE_SIZE.items of them. */
+function drawings(v: unknown, max: { w: number; h: number }, palette: Record<string, string>, what: string, notes: string[]) {
+  if (v === undefined) {
+    return []
+  }
+  const list = Array.isArray(v) && v.length > 0 && v.every(Array.isArray) ? v : [v]
+  if (list.length > SCENE_SIZE.items) {
+    notes.push(`\`${what}\` keeps its first ${SCENE_SIZE.items}.`)
+  }
+
+  return list
+    .slice(0, SCENE_SIZE.items)
+    .map((d, i) => paletteRows(d, max, palette, `\`${what}\` ${i + 1}`, notes))
+    .filter((d): d is string[] => d !== undefined)
+}
+
+function readScene(v: unknown, palette: Record<string, string>, notes: string[]): Scene | undefined {
+  if (v === undefined) {
+    return undefined
+  }
+  if (!isObject(v)) {
+    notes.push('`scene` is an object, so the pet has no scene.')
+    return undefined
+  }
+  const ground = v.ground === undefined ? undefined : paletteRows(v.ground, SCENE_SIZE.ground, palette, '`scene.ground`', notes)
+  const sky = v.sky === undefined ? undefined : paletteRows(v.sky, SCENE_SIZE.sky, palette, '`scene.sky`', notes)
+  const obstacles = drawings(v.obstacles, SCENE_SIZE.obstacle, palette, 'scene.obstacles', notes)
+  const decor = drawings(v.decor, SCENE_SIZE.decor, palette, 'scene.decor', notes)
+  if (!ground && !sky && obstacles.length === 0 && decor.length === 0) {
+    notes.push('`scene` has no ground, sky, obstacles, or decor to draw, so the pet has no scene.')
+    return undefined
+  }
+  let every = EVERY.normal
+  if (v.every !== undefined) {
+    const asked = typeof v.every === 'number' ? Math.round(v.every) : NaN
+    every = Number.isNaN(asked) ? EVERY.normal : Math.min(EVERY.max, Math.max(EVERY.min, asked))
+    if (every !== asked) {
+      notes.push(`\`scene.every\` is a number of columns from ${EVERY.min} to ${EVERY.max}, so it is ${every}.`)
+    }
+  }
+
+  return { ground, ...(sky && { sky }), obstacles, decor, every }
+}
+
 /**
  * A theme from a parsed theme file, or why there is none. Only a value with no sprite is refused. Anything else
  * draws: the mod repairs what it can and says what it did in `notes`, which the drawer may act on or ignore.
@@ -350,6 +397,7 @@ export function readTheme(v: unknown): { theme: Theme; notes: string[]; errors?:
       lines: readLines(v.lines, notes),
       lineColors: readLineColors(v.lineColors, notes),
       hud: readHud(v.hud, notes),
+      scene: readScene(v.scene, palette, notes),
     },
     notes,
   }
@@ -437,6 +485,7 @@ export function animate(theme: Theme): Body {
     miniSprite: theme.miniSprite,
     props: theme.props,
     look: { lines: theme.lines, lineColors: theme.lineColors, hud: theme.hud },
+    scene: theme.scene,
     clips: {
       stand: { fps: 8, frames: STAND.map(p => poseFrame(theme, p)) },
       run: { fps: 12, frames: RUN.map(p => poseFrame(theme, p)) },

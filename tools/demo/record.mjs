@@ -159,6 +159,8 @@ function play() {
       activeTarget: latest ? targetOf(latest.tool, latest.input) : '',
       lastToolAt: running.length ? t : (ended.at(-1)?.at[1] ?? -Infinity),
       room: Math.max(0, COLS - BODY_W - trailWidth(minisAt(t).length) - STATUS_ROOM),
+      obstacles: [], // the slime has no scene
+      trail: trailWidth(minisAt(t).length),
     }
     const moved = step(a, activity, t)
     const slowBeat = minisAt(t).length > 0 ? undefined : SLOW_BEATS[moved.mode]

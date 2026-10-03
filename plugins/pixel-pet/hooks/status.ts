@@ -74,6 +74,10 @@ export const LINES: Record<Mode, string[]> = {
 
 const SWAP_MS = 4000
 
+/** The columns a terminal gives `text`: two for an emoji, none for a joiner or variation selector. */
+export const lineWidth = (text: string) =>
+  [...text].reduce((n, ch) => n + (/[\u200d\ufe0e\ufe0f]/.test(ch) ? 0 : /\p{Extended_Pictographic}/u.test(ch) ? 2 : 1), 0)
+
 // Mid-tone colors, so the line reads on a dark terminal and on a light one.
 const LINE_COLOR: Record<Mode, string> = {
   idle: '#3b9dff',

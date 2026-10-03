@@ -1,11 +1,11 @@
 ---
 name: pixel-pet
-description: Customize the pixel-pet theme. Draw, recolor, or edit the mascot, change its props (the thinking question mark, the web globe, the book, the terminal), minis, status line text and colors, and the HUD's look. Also sets speed, sleep, HUD on or off, status line on or off, naming files, and minis, loads or shares a theme file, and brings the slime back.
+description: Customize the pixel-pet theme. Draw, recolor, or edit the mascot, change its props (the thinking question mark, the web globe, the book, the terminal), minis, status line text and colors, the HUD's look, and the scene (a background, ground, and obstacles the pet jumps). Also sets speed, sleep, HUD on or off, status line on or off, naming files, and minis, loads or shares a theme file, and brings the slime back.
 ---
 
 # Pixel pet
 
-One entry point to change anything the mod draws: the pet, its props, its minis, the status line, the HUD, and the settings. A request can touch any subset. All of it but the settings lives in one theme: a JSON object with the pet's sprite and everything else it changes. Read [FORMAT.md](FORMAT.md) before you change a theme.
+One entry point to change anything the mod draws: the pet, its props, its minis, the status line, the HUD, the scene, and the settings. A request can touch any subset. All of it but the settings lives in one theme: a JSON object with the pet's sprite and everything else it changes. Read [FORMAT.md](FORMAT.md) before you change a theme.
 
 Three tools do the work. Their full names end in `__get_theme`, `__preview_theme`, and `__set_theme`; from the marketplace they are `mcp__pixel-pet__get_theme`, `mcp__pixel-pet__preview_theme`, and `mcp__pixel-pet__set_theme`. When they are not listed, follow [Troubleshooting](#troubleshooting) and stop.
 
@@ -26,13 +26,14 @@ Name the parts the request touches:
 | What a running subagent looks like | `mini`, `miniSprite` | [Minis](FORMAT.md#minis) |
 | The words beside the pet, or their color | `lines`, `lineColors` | [Status lines](FORMAT.md#status-lines) |
 | The HUD's frame, labels, colors, fills, or a hidden bar | `hud` | [HUD](FORMAT.md#hud) |
+| A background, ground, or obstacles the pet jumps | `scene` | [Scene](FORMAT.md#scene) |
 | Speed, sleep, the HUD or status line on or off, naming files, minis on or off | settings, not the theme | [Settings](#settings) |
 
-A whole style ("a pirate pet") touches the sprite, the lines, and the HUD at once. Change each and say what you changed.
+A whole style ("a pirate pet") touches the sprite, the lines, the HUD, and the scene at once. Change each and say what you changed.
 
 When the request does not settle the parts, ask one question:
 
-> Recolor or edit your pet, draw a new one (describe it), change its props, minis, text, or HUD, load a theme file (give the path), change a setting, or get the slime back?
+> Recolor or edit your pet, draw a new one (describe it), change its props, minis, text, HUD, or scene, load a theme file (give the path), change a setting, or get the slime back?
 
 When they ask for a new pet without a description, ask what it is and its main color, in that one question.
 
@@ -92,6 +93,15 @@ Example, a front-facing cat ([`assets/duck.json`](../../assets/duck.json) is a s
 
 **The HUD.** Pick a `frame` color and each bar's label, color, and fill. Pick mid tones. Keep a label to 6 characters.
 
+**The scene.** Set it in the place the pet lives: grass and rocks, a moon with craters, a pond. [`assets/alien.json`](../../assets/alien.json) has a moon scene.
+
+1. Draw a `ground` tile 16 wide and 2 high, with a little texture so the repeat is not flat.
+2. Draw 2 or 3 `obstacles` with different silhouettes, 3 to 6 pixels high and narrow, so each reads as a thing to jump.
+3. Add a few small `decor` drawings: on the ground (a tuft, a flower) or raised into the sky with clear rows below (a cloud, a star). Raised decor drifts across the sky.
+4. Draw a `sky` that suits the place, such as a sun, a moon, or a planet. It stays put near the top right, and the drifting decor passes in front of it.
+5. Leave the rest of the sky clear. A filled background turns the band into a block of color over the user's terminal.
+6. Add every scene color to `palette`, in mid tones.
+
 **The slime back.** Call `set_theme` with `theme` set to `null`. Tell the user the slime is back. Stop.
 
 ## 4. Preview it
@@ -105,7 +115,7 @@ Call `preview_theme` with `theme` and an absolute `path` in the temp folder, suc
 - Read the resting frame. The pupils sit where the face should be, each feature reads, and no pixel strays.
 - Read the notes against [FORMAT.md](FORMAT.md#notes). Fix a note that names something the user did not mean, such as a color drawn clear. Leave the rest as drawn.
 
-Open the page: `open <path>` on macOS, `xdg-open <path>` on Linux, `start <path>` on Windows. Tell the user the page shows each mode in motion with its props, every face, each mode's status lines in their colors, the HUD in two sample states, and the frames, and that its button shows the pet on a light terminal.
+Open the page: `open <path>` on macOS, `xdg-open <path>` on Linux, `start <path>` on Windows. Tell the user the page shows each mode in motion with its props, the pet running through its scene, every face, each mode's status lines in their colors, the HUD in two sample states, and the frames, and that its button shows the pet on a light terminal.
 
 When the page cannot open here (an SSH session or a server with no display), show the resting frame in a code block, list the notes in chat, and give the path with a copy command for the user's own machine, such as `scp <this host>:<path> .`.
 

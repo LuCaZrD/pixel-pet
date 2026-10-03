@@ -1,5 +1,6 @@
 import type { Mode } from '../types'
 import type { HudLook } from './hud'
+import type { Scene } from './scene'
 
 export type Clip = 'stand' | 'run' | 'jump' | 'think' | 'cheer'
 export type BodyFrame = { g: string[]; l: [number, number]; r: [number, number]; e: string }
@@ -15,6 +16,7 @@ export type Body = {
   miniSprite?: string[] // the pet's own mini, in its palette, in place of the drop
   props: Partial<Record<Mode, string[][] | null>> // the pet's own props: frames of rows in its palette; null for none
   look: Look
+  scene?: Scene
   clips: Record<Clip, { fps: number; frames: BodyFrame[] }>
 }
 /** What a pet changes beyond its drawing: its status lines, their colors, and the HUD. */
@@ -61,7 +63,7 @@ export function frameIndex(count: number, fps: number, elapsedMs: number, isLoop
   return isLoop ? n % count : Math.min(n, count - 1)
 }
 
-function canvas(w: number, h: number): Canvas {
+export function canvas(w: number, h: number): Canvas {
   return { w, h, px: new Array<number>(w * h).fill(NONE) }
 }
 
@@ -79,7 +81,7 @@ function rect(c: Canvas, x: number, y: number, w: number, h: number, color: numb
   }
 }
 
-function stamp(c: Canvas, ox: number, oy: number, rows: string[], palette: Record<string, number>) {
+export function stamp(c: Canvas, ox: number, oy: number, rows: string[], palette: Record<string, number>) {
   rows.forEach((row, y) => {
     for (let x = 0; x < row.length; x++) {
       const color = palette[row[x] as string]
@@ -90,7 +92,7 @@ function stamp(c: Canvas, ox: number, oy: number, rows: string[], palette: Recor
   })
 }
 
-const hash = (n: number) => {
+export const hash = (n: number) => {
   let h = Math.imul(n | 0, 2654435761) >>> 0
   h ^= h >>> 13
   h = Math.imul(h, 1274126177) >>> 0
@@ -373,7 +375,7 @@ function drawDrop(c: Canvas, ox: number, y: number, colors: MiniColors) {
   rect(c, ox + 1, y + 4, 3, 1, colors.edge)
 }
 
-function overlay(out: Canvas, src: Canvas, ox: number) {
+export function overlay(out: Canvas, src: Canvas, ox: number) {
   for (let y = 0; y < src.h; y++) {
     for (let x = 0; x < src.w; x++) {
       const color = src.px[y * src.w + x] as number
@@ -461,8 +463,8 @@ export function compose(body: Body, mode: Mode, elapsedMs: number, dir: 1 | -1, 
     drawProp(prop, elapsedMs)
     overlay(out, prop, trail + PROP_X)
   }
-  // Running left mirrors the whole picture, so the trail stays behind the pet. No mode with a prop runs.
-  if (mode === 'run' && dir === -1) {
+  // Running or jumping left mirrors the whole picture, so the trail stays behind the pet. Neither mode has a prop.
+  if ((mode === 'run' || mode === 'jump') && dir === -1) {
     mirror(out)
   }
 
@@ -494,6 +496,18 @@ function base64(bytes: number[]) {
     out += B64.charAt((n >> 18) & 63) + B64.charAt((n >> 12) & 63)
     out += i + 1 < bytes.length ? B64.charAt((n >> 6) & 63) : '='
     out += i + 2 < bytes.length ? B64.charAt(n & 63) : '='
+  }
+
+  return out
+}
+
+/** The `w`×`h` part of `c` from column `x`, row `y`. */
+export function crop(c: Canvas, x: number, y: number, w: number, h: number): Canvas {
+  const out = canvas(w, h)
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      out.px[j * w + i] = c.px[(y + j) * c.w + x + i] as number
+    }
   }
 
   return out

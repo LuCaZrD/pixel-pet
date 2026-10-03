@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Anim, Mode } from '../types'
-import { TICK_MS, fail, step } from './anim'
+import { TICK_MS, fail, leapClipMs, step } from './anim'
 import { BAR_W, HUD_WINDOW_W, frameColor, hudFrom, hudRows, mood, windowEdges } from './hud'
 import type { Hud } from './hud'
 import { minisOnScreen, reconcile } from './minis'
@@ -10,12 +10,15 @@ import type { Mini } from './minis'
 import { animate, readTheme, restingFrame } from './theme'
 import { previewPage } from './preview'
 import { readSettings } from './settings'
-import { BODY_W, FACES, MAX_MINIS, compose, encodeCells, encodeSvg, trailWidth } from './pixels'
+import { BODY_W, FACES, HEIGHT, MAX_MINIS, compose, crop, encodeCells, encodeSvg, trailWidth } from './pixels'
 import type { Body } from './pixels'
-import { lineColor, statusLine, targetOf, toolMode } from './status'
+import { GROUND_H, drawBand, layScene, obstacleSpans } from './scene'
+import type { SceneLayout } from './scene'
+import { lineColor, lineWidth, statusLine, targetOf, toolMode } from './status'
 import type { ToolMode } from './status'
 
 const ROWS = 10 // a cell is two pixels tall, so the frames are 20 px high
+const GROUND_ROWS = GROUND_H / 2
 const STATUS_ROOM = 20 // columns kept free beside a running pet for its status line
 const USAGE_EVERY_BEATS = 20
 const AGENTS_EVERY_BEATS = 5
@@ -102,6 +105,22 @@ export const register: Register = (on, options) => {
   let hud: Hud | undefined
   let minis: Mini[] = []
   let previewed: unknown // the last theme preview_theme drew, for set_theme to apply without resending it
+  let layout: SceneLayout | undefined // the scene of `layoutOf` on a band `bandWidth()` wide
+  let layoutOf: Body | undefined
+
+  // The band leaves the last column free, so a full row never wraps.
+  const bandWidth = () => Math.max(BODY_W, bodyColumns - 1)
+  /** The layout of the pet's scene on the band as wide as it is now, or undefined for a pet with no scene. */
+  const sceneLayout = (pet: Body) => {
+    if (!pet.scene) {
+      return undefined
+    }
+    if (layout?.width !== bandWidth() || layoutOf !== pet) {
+      layout = layScene(pet.scene, bandWidth())
+      layoutOf = pet
+    }
+    return layout
+  }
 
   on('session.start', async ($, e, next) => {
     const now = await $.clock.now()
@@ -111,7 +130,7 @@ export const register: Register = (on, options) => {
       await $.tool.register({
         name: 'preview_theme',
         description:
-          'Writes the preview of a pixel-pet theme to `path`: an HTML page with every motion, face, status line, and HUD look of its pet. It does not change what is on screen. `theme` is in the format the `pixel-pet:pixel-pet` skill describes. Returns the resting frame and notes on anything repaired.',
+          'Writes the preview of a pixel-pet theme to `path`: an HTML page with every motion, face, status line, and HUD look of its pet, and the pet running through its scene. It does not change what is on screen. `theme` is in the format the `pixel-pet:pixel-pet` skill describes. Returns the resting frame and notes on anything repaired.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -124,7 +143,7 @@ export const register: Register = (on, options) => {
       await $.tool.register({
         name: 'set_theme',
         description:
-          'Sets the pixel-pet theme: the pet, its props, minis, status lines, and HUD look, at once, kept for later sessions. `theme` is in the format the `pixel-pet:pixel-pet` skill describes, or null for the default slime. Leave `theme` out to set the last theme preview_theme drew in this session. Returns the resting frame and notes on anything repaired.',
+          'Sets the pixel-pet theme: the pet, its props, minis, status lines, HUD look, and scene, at once, kept for later sessions. `theme` is in the format the `pixel-pet:pixel-pet` skill describes, or null for the default slime. Leave `theme` out to set the last theme preview_theme drew in this session. Returns the resting frame and notes on anything repaired.',
         inputSchema: {
           type: 'object',
           properties: { theme: { type: ['object', 'null'], description: 'The theme as a JSON object, null for the default slime, or left out for the last preview.' } },
@@ -151,9 +170,12 @@ export const register: Register = (on, options) => {
         minis = await minisOr($, t, minis)
       }
 
-      const room = Math.max(0, bodyColumns - BODY_W - trailWidth(minis.length) - STATUS_ROOM)
+      const trail = trailWidth(minis.length)
+      const room = Math.max(0, bodyColumns - BODY_W - trail - STATUS_ROOM)
+      const scene = body && sceneLayout(body)
+      const obstacles = scene ? obstacleSpans(scene) : []
       await update($, anim, a => {
-        const moved = step(a, { isWorking, activeTools, activeMode, activeTarget, lastToolAt, room }, t, settings)
+        const moved = step(a, { isWorking, activeTools, activeMode, activeTarget, lastToolAt, room, obstacles, trail }, t, settings)
         // Minis hop on every tick, so they keep the redraw rate up while the pet idles.
         const slowBeat = minis.length > 0 ? undefined : SLOW_BEATS[moved.mode]
         return slowBeat !== undefined && moved.mode === a.mode && beat % slowBeat !== 0 ? a : moved
@@ -293,7 +315,9 @@ export const register: Register = (on, options) => {
       const now = await $.clock.now()
       const elapsed = now - a.since
       const views = minisOnScreen(minis, now)
-      const picture = compose(body, a.mode, elapsed * settings.pace, a.dir, hud ? mood(hud) : 'ok', views)
+      // A leap is the run mode playing the jump clip, slowed, while the pet travels.
+      const drawn = a.leap ? { mode: 'jump' as const, ms: leapClipMs((now - a.leap.since) * settings.pace) } : { mode: a.mode, ms: elapsed * settings.pace }
+      const picture = compose(body, drawn.mode, drawn.ms, a.dir, hud ? mood(hud) : 'ok', views)
       const extra = views.length > MAX_MINIS ? ` (+${views.length - MAX_MINIS} minis)` : ''
       const line = settings.statusLine ? statusLine(a.mode, a.since, elapsed, a.target, body.look.lines[a.mode]) + extra : ''
       if (showsError) {
@@ -301,6 +325,38 @@ export const register: Register = (on, options) => {
         $.ui.status(undefined)
       }
 
+      const scene = sceneLayout(body)
+      if (e.surface === 'terminal' && scene && body.scene) {
+        const { Box, Raster, Text } = $.ui.resolve(e)
+        const width = scene.width
+        const textW = line ? lineWidth(line) + 3 : 0
+        const left = Math.max(0, Math.min(Math.round(a.x), width - picture.w - textW))
+        const band = drawBand(body, body.scene, scene, picture, left, now)
+        const cells = (x: number, y: number, w: number, h: number) => encodeCells(crop(band, x, y, w, h))
+        // The status line cuts a hole in the band; the band shows above, below, and right of it.
+        const textAt = left + picture.w
+        const shown = Math.min(textW, width - textAt)
+        const rest = width - textAt - shown
+
+        return (
+          <Box flexDirection="column" height={ROWS + GROUND_ROWS}>
+            <Box height={ROWS}>
+              <Raster key="pet" columns={textAt} rows={ROWS} cells={cells(0, 0, textAt, HEIGHT)} />
+              {shown > 0 && (
+                <Box key="line" flexDirection="column" width={shown}>
+                  <Raster key="above" columns={shown} rows={ROWS - 2} cells={cells(textAt, 0, shown, HEIGHT - 4)} />
+                  <Text color={lineColor(a.mode, body.look.lineColors)} bold wrap="truncate">
+                    {` › ${line}`}
+                  </Text>
+                  <Raster key="below" columns={shown} rows={1} cells={cells(textAt, HEIGHT - 2, shown, 2)} />
+                </Box>
+              )}
+              {rest > 0 && <Raster key="rest" columns={rest} rows={ROWS} cells={cells(textAt + shown, 0, rest, HEIGHT)} />}
+            </Box>
+            <Raster key="ground" columns={width} rows={GROUND_ROWS} cells={cells(0, HEIGHT, width, GROUND_H)} />
+          </Box>
+        )
+      }
       if (e.surface === 'terminal') {
         const { Box, Raster, Text } = $.ui.resolve(e)
         const room = Math.max(0, bodyColumns - picture.w - line.length - 4)

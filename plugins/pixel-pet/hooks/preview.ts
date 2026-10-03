@@ -1,8 +1,10 @@
-import type { Mode } from '../types'
+import type { Anim, Mode } from '../types'
+import { TICK_MS, leapClipMs, step } from './anim'
 import { HUD_WINDOW_W, frameColor, hudRows, windowEdges } from './hud'
 import type { Hud } from './hud'
 import { BODY_W, FACES, HEIGHT, MODES, compose, composeFace } from './pixels'
 import type { Body, Canvas, Clip } from './pixels'
+import { GROUND_H, drawBand, layScene, obstacleSpans } from './scene'
 import { LINES, lineColor } from './status'
 
 // When each mode plays, in the words of the README's table.
@@ -28,6 +30,8 @@ const SAMPLE_HUDS: [string, Hud][] = [
   ['Running low', { hp: 22, mp: 12, mpResetsInMin: 41, st: 9, stResetsInMin: 1500 }],
 ]
 const MOTION_FPS = 10
+const SCENE_W = 96 // columns of the sample band
+const SCENE_MS = 12000
 const FACE_FPS = 5
 const LOOP_MS = 2400
 
@@ -40,7 +44,8 @@ type Tile = { label: string; note: string; w: number; h: number; fps: number; fr
 
 /**
  * The preview: a self-contained HTML page with every motion, face, and frame the mod makes for `body`. It shows each mode in
- * motion with when it plays, each face, and each clip's frames before eyes go on. A button switches to a light
+ * motion with when it plays, the pet running through its scene when it has one, each face, each mode's status lines,
+ * the HUD in two sample states, and each clip's frames before eyes go on. A button switches to a light
  * terminal's background. `notes` are readTheme's.
  */
 export function previewPage(body: Body, notes: string[]): string {
@@ -85,6 +90,19 @@ export function previewPage(body: Body, notes: string[]): string {
     })
     return { label: clip, note: `${list.length} frames at ${fps} fps`, w: BODY_W, h: HEIGHT, fps, frames: shots.map(encode) }
   })
+  const scenes: Tile[] = []
+  if (body.scene) {
+    const layout = layScene(body.scene, SCENE_W)
+    const between = { isWorking: true, activeTools: 0, activeMode: 'bash' as const, activeTarget: '', lastToolAt: Infinity, room: SCENE_W - BODY_W, obstacles: obstacleSpans(layout), trail: 0 }
+    let a: Anim = { mode: 'run', since: 0, x: 0, dir: 1, tick: 0, target: '', working: true }
+    const shots: string[] = []
+    for (let t = 0; t < SCENE_MS; t += TICK_MS) {
+      a = step(a, between, t)
+      const picture = a.leap ? compose(body, 'jump', leapClipMs(t - a.leap.since), a.dir) : compose(body, 'run', t - a.since, a.dir)
+      shots.push(encode(drawBand(body, body.scene, layout, picture, Math.round(a.x), t)))
+    }
+    scenes.push({ label: 'run', note: 'Between tool calls, leaping each obstacle on the way', w: SCENE_W, h: HEIGHT + GROUND_H, fps: 1000 / TICK_MS, frames: shots })
+  }
   const palette = colors.map(c => `#${c.toString(16).padStart(6, '0')}`)
   const name = escapeHtml(body.name)
   const tiles = (list: Tile[], kind: string) =>
@@ -131,6 +149,7 @@ export function previewPage(body: Body, notes: string[]): string {
   .wide-cells { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
   .stack { display: grid; gap: 16px; max-width: 1100px; }
   .wide { justify-items: start; overflow-x: auto; }
+  .wide canvas[data-kind] { width: 100%; height: auto; }
   .lines ul { margin: 4px 0 0; padding: 0; list-style: none; font-weight: bold; }
   .hud { margin: 0; line-height: 18px; }
   .hud canvas.bar { width: 180px; height: 18px; vertical-align: top; }
@@ -138,12 +157,13 @@ export function previewPage(body: Body, notes: string[]): string {
 </head>
 <body>
 <header>
-  <div><h1>${name}</h1><p>Every motion, face, status line, and HUD look of this pet. Approve it in Claude Code, or say what to change.</p></div>
+  <div><h1>${name}</h1><p>Every motion, face, status line, and HUD look of this pet${scenes.length > 0 ? ', and its scene' : ''}. Approve it in Claude Code, or say what to change.</p></div>
   <button type="button" aria-pressed="false" id="light">Light terminal</button>
 </header>
 ${noteList}
 <h2>Motions</h2>
 <div class="grid">${tiles(motions, 'motion')}</div>
+${scenes.length > 0 ? `<h2>Scene</h2>\n<div class="stack">${tiles(scenes, 'scene').replace('<figure>', '<figure class="wide">')}</div>` : ''}
 <h2>Faces</h2>
 <div class="grid">${tiles(faces, 'face')}</div>
 <h2>Status lines</h2>
@@ -157,7 +177,7 @@ ${noteList}
 <script>
 const PALETTE = ${JSON.stringify(palette)}
 const CODES = ${JSON.stringify(CODES.slice(0, palette.length).join(''))}
-const TILES = { motion: ${JSON.stringify(motions)}, face: ${JSON.stringify(faces)}, clip: ${JSON.stringify(clips)} }
+const TILES = { motion: ${JSON.stringify(motions)}, scene: ${JSON.stringify(scenes)}, face: ${JSON.stringify(faces)}, clip: ${JSON.stringify(clips)} }
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches
 const canvases = [...document.querySelectorAll('canvas[data-kind]')].map(c => ({ ctx: c.getContext('2d'), tile: TILES[c.dataset.kind][c.dataset.i] }))
 function draw(ctx, tile, frame) {

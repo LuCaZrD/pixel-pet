@@ -53,6 +53,20 @@ test('the band draws the pet, and the hint line draws the HUD in its window', as
   await hint.unmount()
 })
 
+test('a theme with a scene draws the band across its width, with the ground in a row below the pet', async ($, on) => {
+  stubEngine(on)
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  const scene = { ground: ['gg'], obstacles: [['gg', 'gg']] }
+  await $.tool.call({ tool: 'mcp__pixel-pet__set_theme', theme: { ...BLOCK, palette: { ...BLOCK.palette, g: '#888888' }, scene } })
+
+  const band = await $.ui.mount({ plugin: 'pixel-pet', surface: 'terminal', ...BAND })
+  const drawn = JSON.stringify(await band.drawn())
+  expect(drawn).toContain('"key":"pet"')
+  expect(drawn).toContain('"key":"ground"')
+  expect(drawn).toContain('"columns":99')
+  await band.unmount()
+})
+
 test('set_theme draws and keeps a theme, notes what it repaired, and refuses one with no sprite', async ($, on) => {
   const store = stubEngine(on)
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })

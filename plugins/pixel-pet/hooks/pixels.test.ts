@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
-import { EYE_COLOR, MAX_MINIS, MODES, compose, encodeCells, expressionName, frameIndex } from './pixels'
-import type { Body } from './pixels'
+import { EYE_COLOR, MAX_MINIS, MODES, compose, crop, encodeCells, expressionName, frameIndex } from './pixels'
+import type { Body, Canvas } from './pixels'
 
 // A stub pet: a solid block with the eye boxes where the slime's first stand frame has them.
 const frame = { g: Array.from({ length: 20 }, (_, y) => (y >= 12 ? '..dddddddddddddd...' : '...................')), l: [5, 13], r: [10, 13], e: 'open' } as Body['clips']['stand']['frames'][number]
@@ -50,12 +50,10 @@ test('every mode draws a canvas of its size, with a prop only where the mode has
   }
 })
 
+const mirrored = (c: Canvas) => Array.from({ length: c.h }, (_, y) => c.px.slice(y * c.w, (y + 1) * c.w).reverse()).flat()
+
 test('a running pet facing left is the mirror of one facing right', () => {
-  const right = compose(body, 'run', 100, 1)
-  const left = compose(body, 'run', 100, -1)
-  for (let y = 0; y < 20; y++) {
-    expect(left.px.slice(y * 19, y * 19 + 19)).toEqual(right.px.slice(y * 19, y * 19 + 19).reverse())
-  }
+  expect(compose(body, 'run', 100, -1).px).toEqual(mirrored(compose(body, 'run', 100, 1)))
 })
 
 test('each mini widens the picture by its trail, up to MAX_MINIS', () => {
@@ -111,4 +109,13 @@ test("a pet's own mini draws in its palette, and grey once its subagent fails", 
   expect(running.px.filter(c => c === 0x44cc44)).toHaveLength(5)
   expect(failed.px.filter(c => c === 0x44cc44)).toHaveLength(0)
   expect(failed.px.filter(c => c !== -1 && ((c >> 16) & 255) === (c & 255) && (c & 255) === ((c >> 8) & 255)).length).toBeGreaterThanOrEqual(5)
+})
+
+test('crop takes a part of a canvas', () => {
+  const c = { w: 3, h: 2, px: [1, 2, 3, 4, 5, 6] }
+  expect(crop(c, 1, 0, 2, 2)).toEqual({ w: 2, h: 2, px: [2, 3, 5, 6] })
+})
+
+test('a jump to the left mirrors the picture, as a run does', () => {
+  expect(compose(body, 'jump', 100, -1).px).toEqual(mirrored(compose(body, 'jump', 100, 1)))
 })
