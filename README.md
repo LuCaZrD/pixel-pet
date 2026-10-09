@@ -18,12 +18,46 @@
   <img src="docs/images/demo.gif" width="806" alt="A session in the terminal: the slime reads, searches, sends out a mini for a subagent, fetches a page, edits, fails a test and fixes it, and cheers when the turn ends">
 </p>
 
-## Install
+> **This fork adds cat pets.** It is [Namenomeaning/pixel-pet](https://github.com/Namenomeaning/pixel-pet) plus a tuxedo cat and an orange cat with folded ears. Everything else works the same.
+
+## Install with Claude
+
+The quickest way: open Claude Code and paste this.
+
+```text
+Install the pixel-pet plugin for Claude Code from https://github.com/LuCaZrD/pixel-pet.
+Run `claude --version` first (it needs 2.1.287 or later), then run
+`claude plugin marketplace add LuCaZrD/pixel-pet` and
+`claude plugin install pixel-pet@pixel-pet`.
+Then set my pet to the orange cat: load the theme from
+https://raw.githubusercontent.com/LuCaZrD/pixel-pet/main/plugins/pixel-pet/assets/orange.json
+with the pixel-pet skill, and keep it. Tell me whether I need to run /reload-plugins
+or start a new session to see it.
+```
+
+Claude runs the commands, installs the plugin, and sets the pet. For the tuxedo cat, use `tuxedo.json` in place of `orange.json`.
+
+## The cats
+
+<p align="center">
+  <img src="docs/images/orange-cat.png" width="200" alt="The orange cat: cream-orange fur, folded ears, a pink nose, and its tongue out">
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/images/tuxedo-cat.png" width="200" alt="The tuxedo cat: black head, white blaze and muzzle, pink nose, green eyes">
+</p>
+
+| Pet | File | Look |
+| --- | --- | --- |
+| **orange** | [`orange.json`](plugins/pixel-pet/assets/orange.json) | A cream-orange cat with folded ears and its tongue out. |
+| **tuxedo** | [`tuxedo.json`](plugins/pixel-pet/assets/tuxedo.json) | A black and white tuxedo cat with green eyes. |
+
+Both are 16x12 sprites and move like any other pet: they hop, sleep, read, search, and cheer along with Claude. To switch, ask Claude, for example "load the orange cat from the pixel-pet plugin's assets", or give it a raw link such as `https://raw.githubusercontent.com/LuCaZrD/pixel-pet/main/plugins/pixel-pet/assets/tuxedo.json`. Ask for the slime back to undo it.
+
+## Install by hand
 
 You need Claude Code v2.1.287 or later (`claude --version`).
 
 ```bash
-claude plugin marketplace add Namenomeaning/pixel-pet
+claude plugin marketplace add LuCaZrD/pixel-pet
 claude plugin install pixel-pet@pixel-pet
 ```
 
@@ -152,6 +186,7 @@ plugins/pixel-pet/                the plugin: a Claude Code mod
   assets/duck.json                an example pet that faces to one side
   assets/alien.json               an example pet that uses every field
   assets/orange.json              a cream-orange cat with folded ears
+  assets/tuxedo.json              a black and white tuxedo cat
   skills/pixel-pet/               the skill that draws a pet with you, and the pet format
 tools/preview/build.mjs           writes the preview of a theme file
 tools/demo/record.mjs             records docs/images/demo.gif
@@ -181,3 +216,5 @@ Installed copies update only when `version` in `plugins/pixel-pet/.claude-plugin
 ## Author
 
 Made by **halluqinate**. Say hi on [X](https://x.com/QuillPhan), [Instagram](https://www.instagram.com/hallu.qinate/), [TikTok](https://www.tiktok.com/@halluqinate), or [LinkedIn](https://www.linkedin.com/in/phan-vu-anh-quang-3b57b1177/).
+
+The pixel-pet plugin is by [halluqinate](https://github.com/Namenomeaning/pixel-pet). The orange and tuxedo cats were added in this fork.
