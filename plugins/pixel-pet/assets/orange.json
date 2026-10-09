@@ -1,0 +1,24 @@
+{
+  "name": "orange",
+  "scale": 0.9,
+  "sprite": [
+    ".aaa........aaa.",
+    "aeeea......aeeea",
+    "akkkkaaaaaakkkka",
+    "akkkkkkddkkkkkka",
+    "akkkkkkddkkkkkka",
+    "akkkkkkkkkkkkkka",
+    "asskwwwppwwwkssa",
+    "akkkwwwmtwwwkkka",
+    "asskwwwwwwwwkssa",
+    "akkkkwwwwwwkkkka",
+    "akkkkkwwwwkkkkka",
+    ".aaaaaaaaaaaaaa."
+  ],
+  "palette": { "a": "#7a4e30", "k": "#f4c892", "d": "#e3a96f", "e": "#d9967a", "w": "#fff3e2", "s": "#ffffff", "p": "#f48fa0", "m": "#b86a50", "t": "#ff7f9a" },
+  "outline": "a",
+  "eyes": [[3, 4], [11, 4]],
+  "eyeColor": "#5a3a12",
+  "mini": { "top": "#fff3e2", "body": "#f4c892", "edge": "#7a4e30" },
+  "miniSprite": [".a.a.", "akkka", "akwka", "awpwa", ".aaa."]
+}
